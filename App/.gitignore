@@ -1,0 +1,15 @@
+# --- BACKEND ---
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.env
+
+# --- FRONTEND ---
+frontend/node_modules/
+frontend/.expo/
+frontend/.vscode/
+frontend/dist/
+
+# --- SISTEMA ---
+.DS_Store
+*.log
