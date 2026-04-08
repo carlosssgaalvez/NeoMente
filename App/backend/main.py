@@ -1,18 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-#importamos base y models
+from sqlalchemy.orm import Session
+
+import database, crud
 import models
 from database import engine, Base
 
-#ejecución base de datos
-print("Verificando y creando tablas en la base de datos...")
-models.Base.metadata.create_all(bind=engine)
-print("Base de datos lista.")
-
+# 1. Configuración básica de FastAPI
 app = FastAPI()
 
-# IMPORTANTE: Esto permite que tu App (Frontend) se conecte al Backend
+
+# 2. Middleware para CORS (Cross-Origin Resource Sharing)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # En producción se cambia por la IP específica
@@ -20,6 +19,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 3.ejecución base de datos
+@app.on_event("startup")
+def startup_event():
+    # Crea las tablas si no existen
+    models.Base.metadata.create_all(bind=engine)
+    
+    # Abrimos una sesión para insertar datos iniciales
+    db = database.SessionLocal()
+    try:
+        # Solo lo creamos si la tabla juegos está vacía
+        if not crud.obtener_juegos(db):
+            crud.crear_juego(db, "Sopa de Letras", "Atención", "Encuentra las palabras ocultas.")
+            crud.crear_juego(db, "Memoria de Caras", "Memoria", "Recuerda los rostros mostrados.")
+            print("--- Datos de prueba insertados correctamente ---")
+        else:
+            print("--- La base de datos ya contiene juegos, saltando inserción ---")
+    finally:
+        db.close()
 
 @app.get("/")
 def read_root():
@@ -33,3 +51,4 @@ def test_conexion():
 # Añadimos esto para poder ejecutarlo con "python main.py" si falla uvicorn
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
