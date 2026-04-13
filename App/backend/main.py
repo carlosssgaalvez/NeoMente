@@ -1,14 +1,17 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from sqlalchemy.orm import Session
+from typing import List
 
-import database, crud
-import models
-from database import engine, Base
+import database, crud, models, schemas
+from database import engine, SessionLocal
+
+# Creamos las tablas en la base de datos (si no existen)
+models.Base.metadata.create_all(bind=engine)
 
 # 1. Configuración básica de FastAPI
-app = FastAPI()
+app = FastAPI(title="NeoMente API")
 
 
 # 2. Middleware para CORS (Cross-Origin Resource Sharing)
@@ -20,32 +23,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 3.ejecución base de datos
-@app.on_event("startup")
-def startup_event():
-    # Crea las tablas si no existen
-    models.Base.metadata.create_all(bind=engine)
-    
-    # Abrimos una sesión para insertar datos iniciales
-    db = database.SessionLocal()
+# 3. Dependencia para obtener la DB
+def get_db():
+    db = SessionLocal()
     try:
-        # Solo lo creamos si la tabla juegos está vacía
-        if not crud.obtener_juegos(db):
-            crud.crear_juego(db, "Sopa de Letras", "Atención", "Encuentra las palabras ocultas.")
-            crud.crear_juego(db, "Memoria de Caras", "Memoria", "Recuerda los rostros mostrados.")
-            print("--- Datos de prueba insertados correctamente ---")
-        else:
-            print("--- La base de datos ya contiene juegos, saltando inserción ---")
+        yield db
     finally:
         db.close()
 
-@app.get("/")
-def read_root():
-    return {"message": "¡Servidor de NeoMente funcionando!", "status": "online"}
 
-@app.get("/test-conexion")
-def test_conexion():
-    return {"msg": "Conexión exitosa desde el iPhone al Mac M1"}
+@app.get("/")
+def home():
+    return {"message": "NeoMente API Online"}
+
+@app.get("/juegos", response_model=List[schemas.JuegoBase])
+def leer_juegos(db: Session = Depends(get_db)):
+    return crud.obtener_juegos(db)
+
+@app.post("/usuarios/invitado", response_model=schemas.Usuario)
+def crear_invitado(db: Session = Depends(get_db)):
+    # Creamos un username aleatorio o genérico para el invitado
+    import uuid
+    username_invitado = f"invitado_{uuid.uuid4().hex[:6]}"
+    return crud.crear_usuario(db, username=username_invitado, es_invitado=True)
 
 
 # Añadimos esto para poder ejecutarlo con "python main.py" si falla uvicorn

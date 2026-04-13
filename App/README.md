@@ -7,3 +7,4 @@ ejecución backend en consola:
 # 2. activar el entorno
 source venv/bin/activate
 # 3. activar la aplicación
+python3 main.py
