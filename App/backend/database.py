@@ -1,7 +1,6 @@
 # configuración de conexión a base de datos
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Archivo local de SQLite que se creará automáticamente
 # Crea el archivo neomente.db en esta carpeta a través de los models
@@ -14,3 +13,12 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
+
+# para conectar a la base de datos desde los routers
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
