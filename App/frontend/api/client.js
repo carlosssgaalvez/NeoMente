@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000';
+// Cambiamos según la IP que se esté usando en ese momento (.104)
+const API_URL = 'http://192.168.68.104:8000';
 
 const client = axios.create({
   baseURL: API_URL,
@@ -10,13 +11,18 @@ const client = axios.create({
   },
 });
 
-// TODO: Añadir interceptor para token JWT
-// client.interceptors.request.use((config) => {
-//   const token = /* obtener token del storage */;
-//   if (token) {
-//     config.headers.Authorization = `Bearer ${token}`;
-//   }
-//   return config;
-// });
+/**
+ * Interceptor para errores globales (Opcional pero recomendado)
+ * Te avisará en la consola si el servidor está caído o la IP ha cambiado.
+ */
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (!error.response) {
+      console.error("❌ Error de red: El servidor no responde. ¿Está encendido el Mac y es la IP correcta?");
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default client;
