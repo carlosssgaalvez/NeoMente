@@ -24,7 +24,14 @@
       "**/*"
     ],
     "plugins": [
-      "expo-localization"
-    ]
+      "expo-localization",
+      "expo-asset",
+      "expo-secure-store",
+      "expo-notifications",
+      "expo-sqlite"
+    ],
+    "extra": {
+      "apiUrl": "http://192.168.68.106:8000"
+    }
   }
 }

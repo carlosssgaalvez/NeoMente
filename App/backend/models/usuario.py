@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from database import Base
 
 class Usuario(Base):
@@ -10,8 +10,8 @@ class Usuario(Base):
     nombre = Column(String, nullable=True)
     usuario = Column(String, unique=True, index=True, nullable=True)
     hashed_password = Column(String, nullable=True)
-    fecha_registro = Column(DateTime, default=datetime.utcnow)
+    fecha_registro = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     es_invitado = Column(Boolean, default=False)
 
-    # Relaciones
-    resultados = relationship("ResultadoEjercicio", back_populates="propietario")
+    # Relaciones — cascade elimina resultados al borrar el usuario
+    resultados = relationship("ResultadoEjercicio", back_populates="propietario", cascade="all, delete-orphan")

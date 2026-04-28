@@ -1,0 +1,298 @@
+import * as SQLite from 'expo-sqlite';
+
+let db = null;
+
+async function getDB() {
+  if (!db) {
+    db = await SQLite.openDatabaseAsync('neomente_local.db');
+    await db.execAsync('PRAGMA journal_mode = WAL;');
+  }
+  return db;
+}
+
+async function initDatabase() {
+  const database = await getDB();
+
+  await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS juegos (
+      id INTEGER PRIMARY KEY,
+      nombre TEXT NOT NULL UNIQUE,
+      area_cognitiva TEXT NOT NULL,
+      descripcion TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS resultados (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      juego_id INTEGER NOT NULL,
+      puntuacion REAL NOT NULL,
+      duracion_segundos INTEGER NOT NULL,
+      nivel_dificultad INTEGER DEFAULT 0,
+      fecha_realizacion TEXT NOT NULL,
+      synced INTEGER DEFAULT 0,
+      remote_id INTEGER,
+      FOREIGN KEY (juego_id) REFERENCES juegos(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS usuario_local (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      remote_id INTEGER,
+      nombre TEXT,
+      usuario TEXT,
+      es_invitado INTEGER DEFAULT 1,
+      fecha_registro TEXT
+    );
+  `);
+
+  // Seed de juegos si la tabla está vacía
+  const count = await database.getFirstAsync('SELECT COUNT(*) as c FROM juegos');
+  if (!count || count.c === 0) {
+    const seed = [
+      [1, 'Jardín de la Memoria', 'Memoria', 'Memoriza y reproduce secuencias de flores en el jardín.'],
+      [2, 'El Mercado', 'Memoria', 'Recuerda la lista de la compra y selecciona los productos correctos.'],
+      [3, 'La Receta de la Abuela', 'Memoria', 'Memoriza los ingredientes y pasos de una receta.'],
+      [4, 'El Semáforo', 'Atención', 'Responde rápidamente al color correcto del semáforo.'],
+      [5, 'Cazamariposas', 'Atención', 'Atrapa las mariposas del color indicado.'],
+      [6, 'El Vigilante', 'Atención', 'Detecta los cambios en la escena observada.'],
+      [7, 'Refranes Perdidos', 'Lenguaje', 'Completa los refranes con la palabra correcta.'],
+      [8, 'La Oveja Perdida', 'Lenguaje', 'Encuentra la palabra que no pertenece al grupo.'],
+      [9, 'El Reloj de Letras', 'Lenguaje', 'Forma palabras con las letras disponibles antes de que se agote el tiempo.'],
+    ];
+    for (const [id, nombre, area, desc] of seed) {
+      await database.runAsync(
+        'INSERT OR IGNORE INTO juegos (id, nombre, area_cognitiva, descripcion) VALUES (?, ?, ?, ?)',
+        [id, nombre, area, desc]
+      );
+    }
+  }
+
+  return database;
+}
+
+// ======================== JUEGOS ========================
+
+async function insertJuegos(juegos) {
+  const database = await getDB();
+  for (const j of juegos) {
+    await database.runAsync(
+      `INSERT OR REPLACE INTO juegos (id, nombre, area_cognitiva, descripcion) VALUES (?, ?, ?, ?)`,
+      [j.id, j.nombre, j.area_cognitiva, j.descripcion || '']
+    );
+  }
+}
+
+async function getJuegosLocal() {
+  const database = await getDB();
+  return await database.getAllAsync('SELECT * FROM juegos ORDER BY area_cognitiva, nombre');
+}
+
+async function getJuegoLocal(juegoId) {
+  const database = await getDB();
+  return await database.getFirstAsync('SELECT * FROM juegos WHERE id = ?', [juegoId]);
+}
+
+// ======================== RESULTADOS ========================
+
+async function insertResultado(resultado) {
+  const database = await getDB();
+  const fecha = resultado.fecha_realizacion || new Date().toISOString();
+  const res = await database.runAsync(
+    `INSERT INTO resultados (juego_id, puntuacion, duracion_segundos, nivel_dificultad, fecha_realizacion, synced)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      resultado.juego_id,
+      resultado.puntuacion,
+      resultado.duracion_segundos,
+      resultado.nivel_dificultad || 0,
+      fecha,
+      resultado.synced || 0,
+    ]
+  );
+  return { id: res.lastInsertRowId, ...resultado, fecha_realizacion: fecha };
+}
+
+async function getResultadosPorJuegoLocal(juegoId) {
+  const database = await getDB();
+  return await database.getAllAsync(
+    'SELECT * FROM resultados WHERE juego_id = ? ORDER BY fecha_realizacion DESC',
+    [juegoId]
+  );
+}
+
+async function getEstadisticasLocal() {
+  const database = await getDB();
+
+  const juegos = await database.getAllAsync('SELECT * FROM juegos');
+  const resultados = await database.getAllAsync(
+    'SELECT * FROM resultados ORDER BY fecha_realizacion DESC'
+  );
+
+  if (resultados.length === 0) return null;
+
+  const porJuego = {};
+  for (const r of resultados) {
+    if (!porJuego[r.juego_id]) porJuego[r.juego_id] = [];
+    porJuego[r.juego_id].push(r);
+  }
+
+  const juegosMap = {};
+  for (const j of juegos) juegosMap[j.id] = j;
+
+  const estadisticas = {};
+  for (const [juegoId, results] of Object.entries(porJuego)) {
+    const juego = juegosMap[juegoId];
+    if (!juego) continue;
+
+    const puntuaciones = results.map((r) => r.puntuacion);
+    const duraciones = results.map((r) => r.duracion_segundos);
+
+    estadisticas[juego.nombre] = {
+      juego_id: Number(juegoId),
+      area_cognitiva: juego.area_cognitiva,
+      total_partidas: results.length,
+      puntuacion_media: puntuaciones.reduce((a, b) => a + b, 0) / puntuaciones.length,
+      puntuacion_maxima: Math.max(...puntuaciones),
+      duracion_media: Math.round(duraciones.reduce((a, b) => a + b, 0) / duraciones.length),
+      ultimo_resultado: results[0].puntuacion,
+      ultimos_resultados: results.slice(0, 10).map((r) => ({
+        puntuacion: r.puntuacion,
+        duracion_segundos: r.duracion_segundos,
+        nivel_dificultad: r.nivel_dificultad,
+        fecha_realizacion: r.fecha_realizacion,
+      })),
+    };
+  }
+
+  return estadisticas;
+}
+
+async function getProximoNivelLocal(juegoId) {
+  const database = await getDB();
+  const ultimos = await database.getAllAsync(
+    'SELECT puntuacion, nivel_dificultad FROM resultados WHERE juego_id = ? ORDER BY fecha_realizacion DESC LIMIT 5',
+    [juegoId]
+  );
+
+  if (ultimos.length === 0) return { nivel_recomendado: 0 };
+
+  const ultimoNivel = ultimos[0].nivel_dificultad;
+  const media = ultimos.reduce((a, r) => a + r.puntuacion, 0) / ultimos.length;
+
+  if (media >= 80 && ultimoNivel < 2) return { nivel_recomendado: ultimoNivel + 1 };
+  if (media < 40 && ultimoNivel > 0) return { nivel_recomendado: ultimoNivel - 1 };
+  return { nivel_recomendado: ultimoNivel };
+}
+
+// ======================== SYNC QUEUE ========================
+
+async function getUnsyncedResultados() {
+  const database = await getDB();
+  return await database.getAllAsync(
+    'SELECT * FROM resultados WHERE synced = 0 ORDER BY fecha_realizacion ASC'
+  );
+}
+
+async function markResultadoSynced(localId, remoteId) {
+  const database = await getDB();
+  await database.runAsync(
+    'UPDATE resultados SET synced = 1, remote_id = ? WHERE id = ?',
+    [remoteId, localId]
+  );
+}
+
+async function markAllSynced(syncedPairs) {
+  const database = await getDB();
+  for (const { localId, remoteId } of syncedPairs) {
+    await database.runAsync(
+      'UPDATE resultados SET synced = 1, remote_id = ? WHERE id = ?',
+      [remoteId, localId]
+    );
+  }
+}
+
+async function importRemoteResultados(resultados, juegoId) {
+  const database = await getDB();
+  for (const r of resultados) {
+    const exists = await database.getFirstAsync(
+      'SELECT id FROM resultados WHERE remote_id = ?',
+      [r.id]
+    );
+    if (!exists) {
+      await database.runAsync(
+        `INSERT INTO resultados (juego_id, puntuacion, duracion_segundos, nivel_dificultad, fecha_realizacion, synced, remote_id)
+         VALUES (?, ?, ?, ?, ?, 1, ?)`,
+        [juegoId, r.puntuacion, r.duracion_segundos, r.nivel_dificultad || 0, r.fecha_realizacion, r.id]
+      );
+    }
+  }
+}
+
+// ======================== USUARIO LOCAL ========================
+
+async function saveUsuarioLocal(userData) {
+  const database = await getDB();
+  await database.runAsync('DELETE FROM usuario_local');
+  await database.runAsync(
+    `INSERT INTO usuario_local (remote_id, nombre, usuario, es_invitado, fecha_registro) VALUES (?, ?, ?, ?, ?)`,
+    [userData.id || null, userData.nombre || null, userData.usuario || null, userData.es_invitado ? 1 : 0, userData.fecha_registro || new Date().toISOString()]
+  );
+}
+
+async function getUsuarioLocal() {
+  const database = await getDB();
+  const u = await database.getFirstAsync('SELECT * FROM usuario_local LIMIT 1');
+  if (!u) return null;
+  return {
+    id: u.remote_id,
+    nombre: u.nombre,
+    usuario: u.usuario,
+    es_invitado: u.es_invitado === 1,
+    fecha_registro: u.fecha_registro,
+  };
+}
+
+async function clearUsuarioLocal() {
+  const database = await getDB();
+  await database.runAsync('DELETE FROM usuario_local');
+}
+
+// ======================== LIMPIEZA ========================
+
+async function clearAllLocalData() {
+  const database = await getDB();
+  await database.execAsync(`
+    DELETE FROM resultados;
+    DELETE FROM usuario_local;
+  `);
+}
+
+async function clearResultadosLocal() {
+  const database = await getDB();
+  await database.runAsync('DELETE FROM resultados');
+}
+
+async function getResultadosCount() {
+  const database = await getDB();
+  const row = await database.getFirstAsync('SELECT COUNT(*) as count FROM resultados');
+  return row?.count || 0;
+}
+
+export {
+  initDatabase,
+  insertJuegos,
+  getJuegosLocal,
+  getJuegoLocal,
+  insertResultado,
+  getResultadosPorJuegoLocal,
+  getEstadisticasLocal,
+  getProximoNivelLocal,
+  getUnsyncedResultados,
+  markResultadoSynced,
+  markAllSynced,
+  importRemoteResultados,
+  saveUsuarioLocal,
+  getUsuarioLocal,
+  clearUsuarioLocal,
+  clearAllLocalData,
+  clearResultadosLocal,
+  getResultadosCount,
+};

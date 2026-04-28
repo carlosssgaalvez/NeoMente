@@ -1,26 +1,84 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useContext, useEffect, useRef, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, Keyboard, Platform } from 'react-native';
 import { colors } from '../constants/colors';
-import { fonts } from '../constants/fonts';
+import { useFonts } from '../hooks/useFonts';
 import Input from '../components/Input';
 import Button from '../components/Button';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { AuthContext } from '../context/AuthContext';
 
 export default function LoginScreen({ navigation }) {
   const [usuario, setUsuario] = useState('');
   const [password, setPassword] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const { login, setError } = useContext(AuthContext);
+  const scrollRef = useRef(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const f = useFonts();
+  const styles = useMemo(() => getStyles(f), [f]);
 
-  const handleLogin = () => {
-    console.log('Login:', { usuario, password });
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const onShow = (e) => setKeyboardHeight(e.endCoordinates.height);
+    const onHide = () => setKeyboardHeight(0);
+    const sub1 = Keyboard.addListener(showEvent, onShow);
+    const sub2 = Keyboard.addListener(hideEvent, onHide);
+    return () => { sub1.remove(); sub2.remove(); };
+  }, []);
+
+  const handleChange = (field, setter) => (value) => {
+    setter(value);
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
   };
 
-  const handleGuest = () => {
-    console.log('Login como invitado');
+  const handleLogin = async () => {
+    const errors = {};
+
+    if (!usuario.trim()) {
+      errors.usuario = 'Introduce tu usuario';
+    }
+    if (!password) {
+      errors.password = 'Introduce tu contraseña';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setFieldErrors({});
+    setSubmitting(true);
+
+    try {
+      setError(null);
+      await login(usuario.trim(), password);
+      // RootNavigator detecta el cambio de auth y navega automáticamente
+    } catch (err) {
+      const msg = err.message || '';
+      if (msg.toLowerCase().includes('usuario') || msg.toLowerCase().includes('contraseña') || msg.toLowerCase().includes('incorrectos')) {
+        setFieldErrors({ general: msg });
+      } else {
+        setFieldErrors({ general: msg });
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <ScrollView 
+      ref={scrollRef}
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
+      keyboardShouldPersistTaps="handled"
     >
       <View style={styles.content}>
         <Text style={styles.title}>Iniciar Sesión</Text>
@@ -28,32 +86,36 @@ export default function LoginScreen({ navigation }) {
           Ingresa tus datos para comenzar a entrenar
         </Text>
 
+        {fieldErrors.general ? (
+          <View style={styles.generalError} accessibilityRole="alert">
+            <Text style={styles.generalErrorText}>{fieldErrors.general}</Text>
+          </View>
+        ) : null}
+
         <View style={styles.formContainer}>
           <Input
-            placeholder="Usuario"
+            label="Usuario"
             value={usuario}
-            onChangeText={setUsuario}
+            onChangeText={handleChange('usuario', setUsuario)}
             keyboardType="default"
+            error={fieldErrors.usuario}
           />
 
           <Input
-            placeholder="Contraseña"
+            label="Contraseña"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={handleChange('password', setPassword)}
             secureTextEntry
+            error={fieldErrors.password}
           />
         </View>
 
         <Button
-          title="Iniciar Sesión"
+          title={submitting ? "Iniciando..." : "Iniciar Sesión"}
           onPress={handleLogin}
           variant="primary"
-        />
-
-        <Button
-          title="Jugar como Invitado"
-          onPress={handleGuest}
-          variant="secondary"
+          size="large"
+          disabled={submitting}
         />
 
         <View style={styles.footer}>
@@ -61,16 +123,28 @@ export default function LoginScreen({ navigation }) {
           <Text
             style={styles.link}
             onPress={() => navigation.navigate('Register')}
+            accessibilityRole="link"
           >
             Regístrate aquí
           </Text>
         </View>
+
+        <View style={styles.footer}>
+          <Text
+            style={styles.link}
+            onPress={() => navigation.goBack()}
+            accessibilityRole="link"
+          >
+            Volver
+          </Text>
+        </View>
+        {keyboardHeight > 0 && <View style={{ height: keyboardHeight }} />}
       </View>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (f) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -80,38 +154,52 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 30,              // Aumentado
+    padding: f.s(30),
     justifyContent: 'center',
   },
   title: {
-    fontSize: fonts.h1,       // 36px
-    fontWeight: fonts.bold,
+    fontSize: f.h1,
+    fontWeight: f.bold,
     color: colors.primary,
-    marginBottom: 15,
+    marginBottom: f.s(15),
     textAlign: 'center',
   },
   description: {
-    fontSize: fonts.body,     // 20px
+    fontSize: f.body,
     color: colors.lightText,
     textAlign: 'center',
-    marginBottom: 40,         // Más espacio
+    marginBottom: f.s(40),
   },
   formContainer: {
-    marginBottom: 30,
+    marginBottom: f.s(30),
+  },
+  generalError: {
+    backgroundColor: '#FFEBEE',
+    borderRadius: f.s(10),
+    padding: f.s(14),
+    marginBottom: f.s(18),
+    borderWidth: 1,
+    borderColor: colors.danger,
+  },
+  generalErrorText: {
+    color: colors.danger,
+    fontSize: f.small,
+    fontWeight: f.semibold,
+    textAlign: 'center',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 30,
+    marginTop: f.s(30),
     flexWrap: 'wrap',
   },
   footerText: {
     color: colors.text,
-    fontSize: fonts.body,     // 20px
+    fontSize: f.body,     // 20px
   },
   link: {
     color: colors.primary,
-    fontSize: fonts.body,     // 20px
-    fontWeight: fonts.bold,
+    fontSize: f.body,     // 20px
+    fontWeight: f.bold,
   },
 });

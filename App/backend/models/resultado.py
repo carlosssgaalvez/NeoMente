@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from database import Base
 
 class ResultadoEjercicio(Base):
@@ -9,8 +9,8 @@ class ResultadoEjercicio(Base):
     id = Column(Integer, primary_key=True, index=True)
     puntuacion = Column(Float)
     duracion_segundos = Column(Integer)
-    fecha_realizacion = Column(DateTime, default=datetime.utcnow)
-    nivel_dificultad = Column(Integer, default=1)
+    fecha_realizacion = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    nivel_dificultad = Column(Integer, default=0)
     
     # Claves ajenas
     usuario_id = Column(Integer, ForeignKey("usuarios.id"))
