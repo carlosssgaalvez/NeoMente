@@ -6,14 +6,11 @@ import { getAccessToken, getRefreshToken, saveTokens, clearAll } from '../utils/
 const API_URL =
   Constants.expoConfig?.extra?.apiUrl ||
   Constants.manifest?.extra?.apiUrl ||
-  'http://192.168.68.104:8000';
-
-// Log para verificar qué URL se está usando
-console.log('[NeoMente] API_URL =', API_URL);
+  'https://neomente-backend.onrender.com';
 
 const client = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },

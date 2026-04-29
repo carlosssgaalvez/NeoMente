@@ -231,12 +231,14 @@ export default function GardenMemoryScreen({ navigation, route }) {
   const [refuerzoMsg, setRefuerzoMsg] = useState('');
   const [resultSaved, setResultSaved] = useState(false);
   const [countdownNum, setCountdownNum] = useState(3);
+  const [previewSeconds, setPreviewSeconds] = useState(0);
 
   const timerRef = useRef(null);
   const lockRef = useRef(false);
   const flippedRef = useRef([]);
   const previewTimeoutRef = useRef(null);
   const countdownTimeoutRef = useRef(null);
+  const previewTimerRef = useRef(null);
   const appStateRef = useRef(AppState.currentState);
   const wantsToLeaveRef = useRef(false);
 
@@ -289,6 +291,8 @@ export default function GardenMemoryScreen({ navigation, route }) {
       count--;
       if (count <= 0) {
         // Transición a preview: mostrar todas las cartas
+        const totalSec = Math.ceil((config?.tiempoVistazo ?? 5000) / 1000);
+        setPreviewSeconds(totalSec);
         setGameState('preview');
         if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
         previewTimeoutRef.current = setTimeout(() => {
@@ -306,6 +310,20 @@ export default function GardenMemoryScreen({ navigation, route }) {
       if (countdownTimeoutRef.current) clearTimeout(countdownTimeoutRef.current);
     };
   }, [gameState, config]);
+
+  // --- Cuenta atrás visual durante preview ---
+  useEffect(() => {
+    if (gameState === 'preview') {
+      previewTimerRef.current = setInterval(() => {
+        setPreviewSeconds((s) => (s > 0 ? s - 1 : 0));
+      }, 1000);
+    } else {
+      if (previewTimerRef.current) { clearInterval(previewTimerRef.current); previewTimerRef.current = null; }
+    }
+    return () => {
+      if (previewTimerRef.current) { clearInterval(previewTimerRef.current); previewTimerRef.current = null; }
+    };
+  }, [gameState]);
 
   // --- Cargar nivel recomendado al montar ---
   useEffect(() => {
@@ -695,6 +713,10 @@ export default function GardenMemoryScreen({ navigation, route }) {
       {gameState === 'preview' && (
         <View style={styles.previewBanner} accessibilityRole="alert">
           <Text style={styles.previewText}>👀 ¡Memoriza las plantas!</Text>
+          <View style={styles.previewCountdown}>
+            <Text style={styles.previewCountdownNum}>{previewSeconds}</Text>
+            <Text style={styles.previewCountdownLabel}>seg</Text>
+          </View>
         </View>
       )}
 
@@ -857,12 +879,36 @@ const styles = StyleSheet.create({
   previewBanner: {
     backgroundColor: '#FFF9C4',
     paddingVertical: 10,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   previewText: {
     fontSize: fonts.body,
     fontWeight: fonts.semibold,
     color: '#F57F17',
+    flex: 1,
+    textAlign: 'center',
+  },
+  previewCountdown: {
+    backgroundColor: '#F57F17',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginLeft: 8,
+  },
+  previewCountdownNum: {
+    fontSize: 18,
+    fontWeight: fonts.bold,
+    color: '#FFFFFF',
+  },
+  previewCountdownLabel: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    marginLeft: 2,
   },
 
   // --- Pausa ---

@@ -244,6 +244,7 @@ export default function MarketMemoryScreen({ navigation, route }) {
   const [refuerzoMsg, setRefuerzoMsg] = useState('');
   const [resultSaved, setResultSaved] = useState(false);
   const [countdownNum, setCountdownNum] = useState(3);
+  const [memorizeSeconds, setMemorizeSeconds] = useState(0);
 
   // Refs
   const timerRef = useRef(null);
@@ -251,6 +252,7 @@ export default function MarketMemoryScreen({ navigation, route }) {
   const memorizeTimeoutRef = useRef(null);
   const feedbackTimeoutRef = useRef(null);
   const countdownTimeoutRef = useRef(null);
+  const memorizeTimerRef = useRef(null);
   const appStateRef = useRef(AppState.currentState);
   const wantsToLeaveRef = useRef(false);
   const prevGameStateRef = useRef('loading');
@@ -313,6 +315,8 @@ export default function MarketMemoryScreen({ navigation, route }) {
     const tick = () => {
       count--;
       if (count <= 0) {
+        const totalSec = Math.ceil((config?.tiempoVistazo ?? 5000) / 1000);
+        setMemorizeSeconds(totalSec);
         setGameState('memorize');
         if (memorizeTimeoutRef.current) clearTimeout(memorizeTimeoutRef.current);
         memorizeTimeoutRef.current = setTimeout(() => {
@@ -329,6 +333,20 @@ export default function MarketMemoryScreen({ navigation, route }) {
       if (countdownTimeoutRef.current) clearTimeout(countdownTimeoutRef.current);
     };
   }, [gameState, config]);
+
+  // --- Cuenta atrás visual durante memorización ---
+  useEffect(() => {
+    if (gameState === 'memorize') {
+      memorizeTimerRef.current = setInterval(() => {
+        setMemorizeSeconds((s) => (s > 0 ? s - 1 : 0));
+      }, 1000);
+    } else {
+      if (memorizeTimerRef.current) { clearInterval(memorizeTimerRef.current); memorizeTimerRef.current = null; }
+    }
+    return () => {
+      if (memorizeTimerRef.current) { clearInterval(memorizeTimerRef.current); memorizeTimerRef.current = null; }
+    };
+  }, [gameState]);
 
   // --- Cargar nivel al montar ---
   useEffect(() => {
@@ -743,8 +761,14 @@ export default function MarketMemoryScreen({ navigation, route }) {
         >
           <View style={styles.memorizeBanner} accessibilityRole="alert">
             <Text style={styles.memorizeIcon}>👀</Text>
-            <Text style={styles.memorizeText}>¡Memoriza los precios!</Text>
-            <Text style={styles.memorizeSubtext}>Pronto desaparecerán...</Text>
+            <View style={styles.memorizeTextContainer}>
+              <Text style={styles.memorizeText}>¡Memoriza los precios!</Text>
+              <Text style={styles.memorizeSubtext}>Pronto desaparecerán...</Text>
+            </View>
+            <View style={styles.memorizeCountdown}>
+              <Text style={styles.memorizeCountdownNum}>{memorizeSeconds}</Text>
+              <Text style={styles.memorizeCountdownLabel}>seg</Text>
+            </View>
           </View>
 
           <View style={styles.productGrid}>
@@ -967,6 +991,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   memorizeBanner: {
+    flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
     backgroundColor: '#FFF9C4',
@@ -975,7 +1000,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     width: '100%',
   },
-  memorizeIcon: { fontSize: 32, marginBottom: 4 },
+  memorizeIcon: { fontSize: 32, marginRight: 10 },
+  memorizeTextContainer: {
+    flex: 1,
+  },
   memorizeText: {
     fontSize: fonts.body,
     fontWeight: fonts.bold,
@@ -985,6 +1013,25 @@ const styles = StyleSheet.create({
     fontSize: fonts.small,
     color: '#F9A825',
     marginTop: 2,
+  },
+  memorizeCountdown: {
+    backgroundColor: '#F57F17',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginLeft: 8,
+  },
+  memorizeCountdownNum: {
+    fontSize: 18,
+    fontWeight: fonts.bold,
+    color: '#FFFFFF',
+  },
+  memorizeCountdownLabel: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    marginLeft: 2,
   },
   productGrid: {
     flexDirection: 'row',

@@ -1,18 +1,21 @@
 import * as SQLite from 'expo-sqlite';
 
 let db = null;
+let tablesCreated = false;
 
 async function getDB() {
   if (!db) {
     db = await SQLite.openDatabaseAsync('neomente_local.db');
     await db.execAsync('PRAGMA journal_mode = WAL;');
   }
+  if (!tablesCreated) {
+    await createTables(db);
+    tablesCreated = true;
+  }
   return db;
 }
 
-async function initDatabase() {
-  const database = await getDB();
-
+async function createTables(database) {
   await database.execAsync(`
     CREATE TABLE IF NOT EXISTS juegos (
       id INTEGER PRIMARY KEY,
@@ -41,6 +44,13 @@ async function initDatabase() {
       es_invitado INTEGER DEFAULT 1,
       fecha_registro TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS pending_actions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      action TEXT NOT NULL,
+      payload TEXT,
+      created_at TEXT NOT NULL
+    );
   `);
 
   // Seed de juegos si la tabla está vacía
@@ -64,8 +74,6 @@ async function initDatabase() {
       );
     }
   }
-
-  return database;
 }
 
 // ======================== JUEGOS ========================
@@ -95,19 +103,21 @@ async function getJuegoLocal(juegoId) {
 async function insertResultado(resultado) {
   const database = await getDB();
   const fecha = resultado.fecha_realizacion || new Date().toISOString();
+  const nivelClamped = Math.max(0, Math.min(100, resultado.nivel_dificultad || 0));
+  const puntuacionClamped = Math.max(0, Math.min(100, resultado.puntuacion || 0));
   const res = await database.runAsync(
     `INSERT INTO resultados (juego_id, puntuacion, duracion_segundos, nivel_dificultad, fecha_realizacion, synced)
      VALUES (?, ?, ?, ?, ?, ?)`,
     [
       resultado.juego_id,
-      resultado.puntuacion,
+      puntuacionClamped,
       resultado.duracion_segundos,
-      resultado.nivel_dificultad || 0,
+      nivelClamped,
       fecha,
       resultado.synced || 0,
     ]
   );
-  return { id: res.lastInsertRowId, ...resultado, fecha_realizacion: fecha };
+  return { id: res.lastInsertRowId, ...resultado, puntuacion: puntuacionClamped, nivel_dificultad: nivelClamped, fecha_realizacion: fecha };
 }
 
 async function getResultadosPorJuegoLocal(juegoId) {
@@ -126,7 +136,7 @@ async function getEstadisticasLocal() {
     'SELECT * FROM resultados ORDER BY fecha_realizacion DESC'
   );
 
-  if (resultados.length === 0) return null;
+  if (resultados.length === 0) return [];
 
   const porJuego = {};
   for (const r of resultados) {
@@ -137,49 +147,60 @@ async function getEstadisticasLocal() {
   const juegosMap = {};
   for (const j of juegos) juegosMap[j.id] = j;
 
-  const estadisticas = {};
+  const estadisticas = [];
   for (const [juegoId, results] of Object.entries(porJuego)) {
     const juego = juegosMap[juegoId];
     if (!juego) continue;
 
-    const puntuaciones = results.map((r) => r.puntuacion);
-    const duraciones = results.map((r) => r.duracion_segundos);
-
-    estadisticas[juego.nombre] = {
+    estadisticas.push({
       juego_id: Number(juegoId),
+      nombre_juego: juego.nombre,
       area_cognitiva: juego.area_cognitiva,
-      total_partidas: results.length,
-      puntuacion_media: puntuaciones.reduce((a, b) => a + b, 0) / puntuaciones.length,
-      puntuacion_maxima: Math.max(...puntuaciones),
-      duracion_media: Math.round(duraciones.reduce((a, b) => a + b, 0) / duraciones.length),
-      ultimo_resultado: results[0].puntuacion,
-      ultimos_resultados: results.slice(0, 10).map((r) => ({
+      resultados: results.map((r) => ({
         puntuacion: r.puntuacion,
         duracion_segundos: r.duracion_segundos,
         nivel_dificultad: r.nivel_dificultad,
-        fecha_realizacion: r.fecha_realizacion,
+        fecha: r.fecha_realizacion,
       })),
-    };
+    });
   }
 
   return estadisticas;
 }
 
+const MIN_DIFICULTAD = 0;
+const MAX_DIFICULTAD = 100;
+const MAX_SUBIDA = 8;
+const MAX_BAJADA = 5;
+const UMBRAL_ALTO = 80;
+const UMBRAL_BAJO = 40;
+
+function calcularSiguienteDificultad(puntuacion, nivelActual) {
+  let delta;
+  if (puntuacion >= UMBRAL_ALTO) {
+    const factor = (puntuacion - UMBRAL_ALTO) / (100 - UMBRAL_ALTO);
+    delta = Math.round(2 + factor * (MAX_SUBIDA - 2));
+  } else if (puntuacion <= UMBRAL_BAJO) {
+    const factor = (UMBRAL_BAJO - puntuacion) / UMBRAL_BAJO;
+    delta = -Math.round(1 + factor * (MAX_BAJADA - 1));
+  } else {
+    delta = 0;
+  }
+  const nuevo = nivelActual + delta;
+  return Math.max(MIN_DIFICULTAD, Math.min(MAX_DIFICULTAD, nuevo));
+}
+
 async function getProximoNivelLocal(juegoId) {
   const database = await getDB();
-  const ultimos = await database.getAllAsync(
-    'SELECT puntuacion, nivel_dificultad FROM resultados WHERE juego_id = ? ORDER BY fecha_realizacion DESC LIMIT 5',
+  const ultimo = await database.getFirstAsync(
+    'SELECT puntuacion, nivel_dificultad FROM resultados WHERE juego_id = ? ORDER BY fecha_realizacion DESC LIMIT 1',
     [juegoId]
   );
 
-  if (ultimos.length === 0) return { nivel_recomendado: 0 };
+  if (!ultimo) return { nivel_recomendado: 0 };
 
-  const ultimoNivel = ultimos[0].nivel_dificultad;
-  const media = ultimos.reduce((a, r) => a + r.puntuacion, 0) / ultimos.length;
-
-  if (media >= 80 && ultimoNivel < 2) return { nivel_recomendado: ultimoNivel + 1 };
-  if (media < 40 && ultimoNivel > 0) return { nivel_recomendado: ultimoNivel - 1 };
-  return { nivel_recomendado: ultimoNivel };
+  const recomendado = calcularSiguienteDificultad(ultimo.puntuacion, ultimo.nivel_dificultad);
+  return { nivel_recomendado: recomendado };
 }
 
 // ======================== SYNC QUEUE ========================
@@ -230,11 +251,18 @@ async function importRemoteResultados(resultados, juegoId) {
 
 async function saveUsuarioLocal(userData) {
   const database = await getDB();
-  await database.runAsync('DELETE FROM usuario_local');
-  await database.runAsync(
-    `INSERT INTO usuario_local (remote_id, nombre, usuario, es_invitado, fecha_registro) VALUES (?, ?, ?, ?, ?)`,
-    [userData.id || null, userData.nombre || null, userData.usuario || null, userData.es_invitado ? 1 : 0, userData.fecha_registro || new Date().toISOString()]
-  );
+  await database.execAsync('BEGIN');
+  try {
+    await database.runAsync('DELETE FROM usuario_local');
+    await database.runAsync(
+      `INSERT INTO usuario_local (remote_id, nombre, usuario, es_invitado, fecha_registro) VALUES (?, ?, ?, ?, ?)`,
+      [userData.id || null, userData.nombre || null, userData.usuario || null, userData.es_invitado ? 1 : 0, userData.fecha_registro || new Date().toISOString()]
+    );
+    await database.execAsync('COMMIT');
+  } catch (e) {
+    await database.execAsync('ROLLBACK');
+    throw e;
+  }
 }
 
 async function getUsuarioLocal() {
@@ -262,12 +290,43 @@ async function clearAllLocalData() {
   await database.execAsync(`
     DELETE FROM resultados;
     DELETE FROM usuario_local;
+    DELETE FROM pending_actions;
   `);
 }
 
 async function clearResultadosLocal() {
   const database = await getDB();
   await database.runAsync('DELETE FROM resultados');
+}
+
+async function queuePendingAction(action, payload) {
+  const database = await getDB();
+  await database.runAsync(
+    'INSERT INTO pending_actions (action, payload, created_at) VALUES (?, ?, ?)',
+    [action, payload ? JSON.stringify(payload) : null, new Date().toISOString()]
+  );
+}
+
+async function getPendingActions() {
+  const database = await getDB();
+  const rows = await database.getAllAsync('SELECT * FROM pending_actions ORDER BY created_at ASC');
+  return rows.map((r) => {
+    let parsed = null;
+    if (r.payload) {
+      try { parsed = JSON.parse(r.payload); } catch { /* payload corrupto, ignorar */ }
+    }
+    return { ...r, payload: parsed };
+  });
+}
+
+async function clearPendingAction(id) {
+  const database = await getDB();
+  await database.runAsync('DELETE FROM pending_actions WHERE id = ?', [id]);
+}
+
+async function clearAllPendingActions() {
+  const database = await getDB();
+  await database.runAsync('DELETE FROM pending_actions');
 }
 
 async function getResultadosCount() {
@@ -277,7 +336,7 @@ async function getResultadosCount() {
 }
 
 export {
-  initDatabase,
+  getDB as initDatabase,
   insertJuegos,
   getJuegosLocal,
   getJuegoLocal,
@@ -295,4 +354,8 @@ export {
   clearAllLocalData,
   clearResultadosLocal,
   getResultadosCount,
+  queuePendingAction,
+  getPendingActions,
+  clearPendingAction,
+  clearAllPendingActions,
 };

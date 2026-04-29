@@ -6,6 +6,11 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#1B5E20"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.carlos.neomente"
@@ -13,7 +18,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#2E7D32"
+        "backgroundColor": "#1B5E20"
       },
       "package": "com.carlos.neomente"
     },
@@ -31,7 +36,7 @@
       "expo-sqlite"
     ],
     "extra": {
-      "apiUrl": "http://192.168.68.106:8000"
+      "apiUrl": "https://neomente-backend.onrender.com"
     }
   }
 }

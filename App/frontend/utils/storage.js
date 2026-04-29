@@ -35,7 +35,8 @@ export const saveUser = async (user) => {
 
 export const getUser = async () => {
   const data = await SecureStore.getItemAsync(USER_KEY);
-  return data ? JSON.parse(data) : null;
+  if (!data) return null;
+  try { return JSON.parse(data); } catch { return null; }
 };
 
 export const removeUser = async () => {

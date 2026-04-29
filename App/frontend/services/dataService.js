@@ -50,8 +50,8 @@ async function guardarResultado(resultado) {
         await localDB.markResultadoSynced(local.id, remote.id);
         return remote;
       }
-    } catch (err) {
-      console.log('[DataService] Error syncing resultado, queued locally:', err.message);
+    } catch {
+      // Queda encolado localmente para sincronizar después
     }
   }
 
@@ -71,8 +71,8 @@ async function getEstadisticas() {
       const remote = await gameAPI.getEstadisticas();
       return remote;
     }
-  } catch (err) {
-    console.log('[DataService] Remote stats failed, using local:', err.message);
+  } catch {
+    // Fallo remoto, usar datos locales
   }
 
   return await localDB.getEstadisticasLocal();
@@ -93,8 +93,8 @@ async function getResultadosPorJuego(juegoId) {
     if (canSync) {
       return await gameAPI.getResultadosPorJuego(juegoId);
     }
-  } catch (err) {
-    console.log('[DataService] Remote results failed, using local:', err.message);
+  } catch {
+    // Fallo remoto, usar datos locales
   }
 
   return await localDB.getResultadosPorJuegoLocal(juegoId);
@@ -109,9 +109,11 @@ async function borrarEstadisticas() {
       const canSync = await isRegisteredAndOnline();
       if (canSync) {
         await gameAPI.borrarEstadisticas();
+      } else {
+        await localDB.queuePendingAction('DELETE_STATS', null);
       }
-    } catch (err) {
-      console.log('[DataService] Error deleting remote stats:', err.message);
+    } catch {
+      await localDB.queuePendingAction('DELETE_STATS', null);
     }
   }
 }

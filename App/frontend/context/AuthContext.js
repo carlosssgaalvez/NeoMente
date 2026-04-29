@@ -92,7 +92,6 @@ export function AuthProvider({ children }) {
       const localUser = await getUsuarioLocal();
       if (localUser && localUser.es_invitado) {
         setUser(localUser);
-        console.log('[NeoMente] guest restored from local DB');
         return;
       }
 
@@ -108,9 +107,7 @@ export function AuthProvider({ children }) {
       await saveUsuarioLocal(guestProfile);
       await saveUser(guestProfile);
       setUser(guestProfile);
-      console.log('[NeoMente] local guest created');
     } catch (err) {
-      console.log('[NeoMente] loginAsGuest error:', err.message);
       const message = err.message || 'Error al crear perfil invitado';
       setError(message);
       throw new Error(message);
@@ -200,7 +197,6 @@ export function AuthProvider({ children }) {
         throw new Error('Necesitas conexión a internet para crear tu cuenta');
       }
 
-      // Registrar directamente (el invitado era solo local)
       await authAPI.registro(nombre, usuario, password);
       const tokenData = await authAPI.login(usuario, password);
       await saveTokens(tokenData.access_token, tokenData.refresh_token);
@@ -211,7 +207,6 @@ export function AuthProvider({ children }) {
       await saveUsuarioLocal(perfil);
       setUser(perfil);
 
-      // Subir todos los resultados locales al servidor
       startAutoSync();
       await fullSync();
     } catch (err) {

@@ -2,8 +2,9 @@
 
 Aplicación móvil de entrenamiento cognitivo desarrollada como TFG.
 
-- **Backend**: FastAPI + SQLAlchemy + SQLite
-- **Frontend**: React Native (Expo)
+- **Backend**: FastAPI + SQLAlchemy (SQLite local / PostgreSQL en la nube)
+- **Frontend**: React Native (Expo SDK 54)
+- **Arquitectura**: Offline-first con sincronización automática
 
 ---
 
@@ -11,15 +12,68 @@ Aplicación móvil de entrenamiento cognitivo desarrollada como TFG.
 
 - Python 3.10+
 - Node.js 18+ y npm
-- Expo Go (Aplicación) instalado en el móvil (misma red WiFi que el PC)
+- Expo Go instalado en el móvil (misma red WiFi que el PC)
 
 ---
 
-## 1. Configurar la IP local
+## Modos de despliegue
+
+El proyecto soporta dos modos de despliegue. La diferencia se controla únicamente con la `apiUrl` en `frontend/app.json`.
+
+| Modo | Backend | Base de datos | `apiUrl` |
+|------|---------|---------------|----------|
+| **Local** | Servidor en tu PC | SQLite (fichero local) | `http://<TU_IP_LOCAL>:8000` |
+| **Nube** | Render (hosting gratuito) | Neon PostgreSQL | `https://neomente-backend.onrender.com` |
+
+> **Nota:** En ambos modos, la app funciona offline para invitados gracias a SQLite local en el dispositivo. Los usuarios registrados sincronizan automáticamente con el servidor cuando recuperan conexión.
+
+---
+
+## Opción A: Despliegue en la nube (recomendado)
+
+Este es el modo más sencillo. El backend ya está desplegado en Render con PostgreSQL en Neon. No necesitas arrancar ningún servidor local.
+
+### 1. Configurar la URL del API
+
+Edita `frontend/app.json` y asegúrate de que apunta a la nube:
+
+```json
+"extra": {
+  "apiUrl": "https://neomente-backend.onrender.com"
+}
+```
+
+### 2. Arrancar el frontend
+
+```powershell
+cd App\frontend
+
+# Instalar dependencias (solo la primera vez)
+npm install
+
+# Obtén tu IP WiFi
+ipconfig    # Busca la IPv4 del adaptador Wi-Fi
+
+# Arranca Expo (sustituye por tu IP)
+$env:REACT_NATIVE_PACKAGER_HOSTNAME="<TU_IP_WIFI>"
+npx expo start --lan
+```
+
+Escanea el QR con Expo Go y listo.
+
+> **Importante:** El backend en Render (plan gratuito) hiberna tras 15 minutos de inactividad. La primera petición tras la hibernación puede tardar 30-60 segundos. Las siguientes serán instantáneas.
+
+---
+
+## Opción B: Despliegue 100% local
+
+Útil para desarrollo o si quieres independencia total de internet.
+
+### 1. Configurar la IP local
 
 Ejecuta `ipconfig` (Windows) o `ip a` (Linux/Mac) y anota la **IPv4 de tu adaptador WiFi**.
 
-Edita `frontend/app.json` y actualiza la URL del API:
+Edita `frontend/app.json` y apunta a tu máquina:
 
 ```json
 "extra": {
@@ -27,11 +81,7 @@ Edita `frontend/app.json` y actualiza la URL del API:
 }
 ```
 
----
-
-## 2. Backend
-
-Las dependencias se instalan en un entorno virtual (`venv`) para no interferir con otros proyectos Python.
+### 2. Backend
 
 ```powershell
 cd App\backend
@@ -43,96 +93,81 @@ python -m venv venv
 .\venv\Scripts\Activate        # Windows PowerShell
 # source venv/bin/activate     # Linux / macOS
 
-# Instalar dependencias (solo la primera vez o tras cambios en requirements.txt)
+# Instalar dependencias (solo la primera vez)
 pip install -r requirements.txt
 ```
 
-### Configurar el archivo `.env`
+#### Configurar el archivo `.env`
 
-El archivo `backend/.env` ya existe. Cambia `SECRET_KEY` por un valor seguro (solo la primera vez):
+Crea o edita `backend/.env`:
+
+```
+SECRET_KEY=<valor_seguro>
+```
+
+Para generar un valor seguro:
 
 ```powershell
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-Copia el resultado y pégalo en `backend/.env`:
+> En modo local no necesitas `DATABASE_URL`. El backend usará SQLite automáticamente (`neomente.db`).
 
-```
-SECRET_KEY=<valor_generado>
-```
-
-### Arrancar el servidor
+#### Arrancar el servidor
 
 ```powershell
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Verifica que funciona accediendo desde el navegador: `http://<TU_IP_LOCAL>:8000/docs`
+Verifica en el navegador: `http://<TU_IP_LOCAL>:8000/docs`
 
----
-cd
-## 3. Frontend
-
-npm gestiona las dependencias de forma local en `node_modules/`, por lo que no necesita entorno virtual.
+### 3. Frontend
 
 ```powershell
 cd App\frontend
 
-# Instalar dependencias (solo la primera vez o tras cambios en package.json)
+# Instalar dependencias (solo la primera vez)
 npm install
+
+# Arranca Expo (sustituye por tu IP)
+$env:REACT_NATIVE_PACKAGER_HOSTNAME="<TU_IP_WIFI>"
+npx expo start --lan
 ```
 
-### Arrancar Expo
+---
 
-Expo necesita conocer la IP local del PC para que el móvil pueda conectarse. Sigue estos pasos:
+## Escanear el QR
 
-1. Obtén tu IP WiFi:
-
-   ```powershell
-   ipconfig
-   ```
-
-   Busca la **IPv4** del adaptador **Wi-Fi** (por ejemplo `192.168.68.104`).
-
-2. Arranca Expo forzando esa IP (sustituye por la tuya):
-
-   ```powershell
-   $env:REACT_NATIVE_PACKAGER_HOSTNAME="<TU_IP_WIFI>"
-   npx expo start --lan
-   ```
-
-   > **¿Por qué?** En algunas redes, Expo no detecta la IP y cae a `127.0.0.1`, lo que impide la conexión desde el móvil. La variable `REACT_NATIVE_PACKAGER_HOSTNAME` lo fuerza.
-$env:REACT_NATIVE_PACKAGER_HOSTNAME="192.168.68.104"
-   npx expo start --lan
-3. Comprueba que la URL del QR muestra tu IP (ej. `exp://192.168.68.104:8081`), **no** `127.0.0.1`.
-
-### Escanear el QR
-
-- **iOS**: escanea el QR con la **cámara nativa** del iPhone. Al reconocerlo, aparecerá un banner para abrir **Expo Go** automáticamente.
-- **Android**: escanea con Expo Go directamente.
-- Si el QR no cabe en la terminal, maximiza la ventana o pulsa `?` en Expo → copia la URL → pégala manualmente en Expo Go.
+- **iOS**: escanea con la **cámara nativa** → se abrirá Expo Go automáticamente.
+- **Android**: escanea desde Expo Go directamente.
+- Comprueba que la URL del QR muestra tu IP (ej. `exp://192.168.68.104:8081`), **no** `127.0.0.1`.
 
 El móvil debe estar en la **misma red WiFi** que el PC.
 
-### Problemas comunes
+---
 
-firewall: netsh advfirewall firewall add rule name="Expo Metro" dir=in action=allow protocol=TCP localport=8081
+## Problemas comunes
 
-- **`Error: The required package 'expo-asset' cannot be found`** (u otro paquete de Expo):
+- **Firewall**: si el móvil no conecta, permite los puertos en Windows:
+
+  ```powershell
+  netsh advfirewall firewall add rule name="Expo Metro" dir=in action=allow protocol=TCP localport=8081
+  netsh advfirewall firewall add rule name="NeoMente API" dir=in action=allow protocol=TCP localport=8000
+  ```
+
+- **Paquete no encontrado** (`expo-asset`, etc.):
 
   ```powershell
   npx expo install expo-asset
   ```
 
-  Usa siempre `npx expo install <paquete>` (en vez de `npm install`) para dependencias de Expo.
-
-- **Warnings de versiones** (`expected version: ...`): no bloquean el arranque, pero conviene alinearlas:
+- **Warnings de versiones**:
 
   ```powershell
   npx expo install --fix
   ```
 
-- **La app tarda mucho o falla al conectar desde el móvil**: asegúrate de que el firewall de Windows permite conexiones en el puerto **8081** (Metro) y **8000** (API). También comprueba que el PC y el móvil están en la misma red WiFi y que la red no está marcada como "Pública" en Windows (cámbiala a "Privada" en *Configuración → Red e Internet → WiFi → Propiedades*).
+- **Red pública**: si la red WiFi está marcada como "Pública" en Windows, cámbiala a "Privada" en *Configuración → Red e Internet → WiFi → Propiedades*.
 
 ---
 
@@ -140,29 +175,50 @@ firewall: netsh advfirewall firewall add rule name="Expo Metro" dir=in action=al
 
 ```
 App/
-├── backend/          # API REST (FastAPI)
-│   ├── main.py
-│   ├── auth.py
-│   ├── database.py
-│   ├── schemas.py
-│   ├── .env          # Variables de entorno (NO subir a git)
-│   ├── crud/
-│   ├── models/
-│   └── routers/
-└── frontend/         # App móvil (React Native + Expo)
-    ├── App.js
-    ├── app.json
-    ├── api/
-    ├── components/
-    ├── context/
-    ├── navigation/
-    ├── screens/
-    └── utils/
+├── backend/                # API REST (FastAPI)
+│   ├── main.py             # Punto de entrada
+│   ├── auth.py             # Autenticación JWT
+│   ├── database.py         # Conexión BD (SQLite o PostgreSQL)
+│   ├── schemas.py          # Esquemas Pydantic
+│   ├── .env                # Variables de entorno (NO subir a git)
+│   ├── Procfile            # Configuración Render
+│   ├── crud/               # Lógica de negocio
+│   ├── models/             # Modelos SQLAlchemy
+│   └── routers/            # Endpoints REST
+└── frontend/               # App móvil (React Native + Expo)
+    ├── App.js              # Punto de entrada
+    ├── app.json            # Configuración Expo + apiUrl
+    ├── api/                # Cliente HTTP + servicios API
+    ├── components/         # Componentes reutilizables
+    ├── constants/          # Colores, fuentes
+    ├── context/            # AuthContext (gestión de sesión)
+    ├── database/           # SQLite local (offline-first)
+    ├── hooks/              # Custom hooks
+    ├── navigation/         # React Navigation
+    ├── screens/            # Pantallas + juegos
+    ├── services/           # dataService, syncService
+    └── utils/              # Validación, storage
 ```
+
+---
+
+## Infraestructura en la nube
+
+| Servicio | Proveedor | Plan | Repositorio |
+|----------|-----------|------|-------------|
+| Backend API | [Render](https://render.com) | Free | `carlosssgaalvez/neomente-backend` |
+| Base de datos | [Neon](https://neon.tech) | Free (PostgreSQL) | — |
+
+Variables de entorno configuradas en Render:
+- `DATABASE_URL` — Cadena de conexión Neon PostgreSQL
+- `SECRET_KEY` — Clave JWT
+- `ALLOWED_ORIGINS` — Orígenes CORS permitidos
 
 ---
 
 ## Notas
 
-- El archivo `backend/.env` y `backend/venv/` **no deben subirse a git**. Asegúrate de que están en `.gitignore`.
-- La base de datos SQLite (`neomente.db`) se crea automáticamente al arrancar el backend por primera vez.
+- `backend/.env`, `backend/venv/` y `neomente.db` **no deben subirse a git** (están en `.gitignore`).
+- La base de datos SQLite local se crea automáticamente al arrancar el backend.
+- En modo nube, el backend se redespliega automáticamente al hacer push al repo Git.
+- Los invitados funcionan 100% offline. Los usuarios registrados sincronizan automáticamente al recuperar conexión.

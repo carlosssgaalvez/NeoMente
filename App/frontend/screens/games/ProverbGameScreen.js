@@ -659,7 +659,7 @@ export default function ProverbGameScreen({ navigation, route }) {
       >
         <View style={styles.resultCard}>
           <Text style={styles.resultEmoji}>
-            {puntuacion >= 80 ? '🏆' : puntuacion >= 50 ? '�' : '🌱'}
+            {puntuacion >= 80 ? '🏆' : puntuacion >= 50 ? '⭐' : '🌱'}
           </Text>
           <Text style={styles.resultTitle}>¡Partida terminada!</Text>
           <Text style={styles.refuerzoText}>{refuerzoMsg}</Text>
@@ -725,7 +725,7 @@ export default function ProverbGameScreen({ navigation, route }) {
               accessibilityRole="button"
               accessibilityLabel="Jugar de nuevo"
             >
-              <Text style={styles.btnPrimaryText}>� Jugar de nuevo</Text>
+              <Text style={styles.btnPrimaryText}>📜 Jugar de nuevo</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.btnSecondary}

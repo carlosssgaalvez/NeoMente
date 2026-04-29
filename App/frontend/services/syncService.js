@@ -1,6 +1,6 @@
 import NetInfo from '@react-native-community/netinfo';
 import { getAccessToken } from '../utils/storage';
-import { getUnsyncedResultados, markResultadoSynced, importRemoteResultados, getJuegosLocal, insertJuegos } from '../database/localDB';
+import { getUnsyncedResultados, markResultadoSynced, importRemoteResultados, getJuegosLocal, insertJuegos, getPendingActions, clearPendingAction } from '../database/localDB';
 import * as gameAPI from '../api/gameServices';
 
 let syncInProgress = false;
@@ -17,7 +17,7 @@ function notifyListeners(status) {
 
 async function isOnline() {
   const state = await NetInfo.fetch();
-  return state.isConnected && state.isInternetReachable !== false;
+  return state.isConnected === true;
 }
 
 async function isAuthenticated() {
@@ -40,6 +40,8 @@ async function syncToServer() {
       return { synced: 0, error: null };
     }
 
+    await processPendingActions();
+
     const unsynced = await getUnsyncedResultados();
     if (unsynced.length === 0) {
       syncInProgress = false;
@@ -58,8 +60,7 @@ async function syncToServer() {
         });
         await markResultadoSynced(resultado.id, remote.id);
         syncedCount++;
-      } catch (err) {
-        console.log('[Sync] Error uploading resultado:', resultado.id, err.message);
+      } catch {
         break;
       }
     }
@@ -67,11 +68,31 @@ async function syncToServer() {
     notifyListeners(syncedCount > 0 ? 'synced' : 'error');
     return { synced: syncedCount, error: null };
   } catch (err) {
-    console.log('[Sync] Unexpected error:', err.message);
     notifyListeners('error');
     return { synced: 0, error: err.message };
   } finally {
     syncInProgress = false;
+  }
+}
+
+const ACTION_HANDLERS = {
+  DELETE_STATS: () => gameAPI.borrarEstadisticas(),
+};
+
+async function processPendingActions() {
+  const actions = await getPendingActions();
+  for (const action of actions) {
+    const handler = ACTION_HANDLERS[action.action];
+    if (!handler) {
+      await clearPendingAction(action.id);
+      continue;
+    }
+    try {
+      await handler(action.payload);
+      await clearPendingAction(action.id);
+    } catch {
+      break;
+    }
   }
 }
 
@@ -98,14 +119,12 @@ async function syncFromServer() {
         if (remoteResults && remoteResults.length > 0) {
           await importRemoteResultados(remoteResults, juego.id);
         }
-      } catch (err) {
-        if (err.response?.status !== 404) {
-          console.log('[Sync] Error importing results for juego', juego.id, err.message);
-        }
+      } catch {
+        // 404 = sin resultados para ese juego, ignorar
       }
     }
-  } catch (err) {
-    console.log('[Sync] syncFromServer error:', err.message);
+  } catch {
+    // Error de sincronización descendente, se reintentará
   }
 }
 
@@ -121,7 +140,6 @@ function startAutoSync() {
 
   unsubscribeNetInfo = NetInfo.addEventListener(async (state) => {
     if (state.isConnected && state.isInternetReachable !== false) {
-      console.log('[Sync] Connection detected, starting sync...');
       await syncToServer();
     }
   });
