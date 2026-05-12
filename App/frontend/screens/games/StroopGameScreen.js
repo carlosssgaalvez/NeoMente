@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getProximoNivel, guardarResultado } from '../../services/dataService';
 
 // --- Colores del juego Stroop ---
@@ -183,6 +184,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // --- Pantalla principal del juego ---
 export default function StroopGameScreen({ navigation, route }) {
   const juegoId = route.params?.juegoId;
+  const insets = useSafeAreaInsets();
 
   // Estado del juego
   const [nivel, setNivel] = useState(null);
@@ -672,7 +674,7 @@ export default function StroopGameScreen({ navigation, route }) {
     : 1;
 
   return (
-    <View style={styles.gameContainer}>
+    <View style={[styles.gameContainer, { paddingBottom: insets.bottom }]}>
       {/* Modal de pausa */}
       <Modal
         visible={gameState === 'paused'}
@@ -772,27 +774,60 @@ export default function StroopGameScreen({ navigation, route }) {
         </View>
       )}
 
-      {/* Instrucción */}
-      <View style={styles.instructionBar}>
-        <Text style={styles.instructionText}>
-          {ronda.invertida
-            ? '📖 ¿Qué PALABRA ves?'
-            : '🎨 ¿De qué COLOR son las letras?'}
-        </Text>
-      </View>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.gameScrollContent}
+        bounces={false}
+        keyboardShouldPersistTaps="always"
+      >
+        {/* Instrucción */}
+        <View style={styles.instructionBar}>
+          <Text style={styles.instructionText}>
+            {ronda.invertida
+              ? '📖 ¿Qué PALABRA ves?'
+              : '🎨 ¿De qué COLOR son las letras?'}
+          </Text>
+        </View>
 
-      {/* Palabra Stroop */}
-      <View style={styles.wordContainer}>
-        <Animated.Text
-          style={[
-            styles.stroopWord,
-            { color: ronda.colorTexto.hex, transform: [{ scale: wordScaleAnim }] },
-          ]}
-          accessibilityLabel={`La palabra ${ronda.palabra} escrita en color ${ronda.colorTexto.nombre}`}
-        >
-          {ronda.palabra}
-        </Animated.Text>
-      </View>
+        {/* Palabra Stroop */}
+        <View style={styles.wordContainer}>
+          <Animated.Text
+            style={[
+              styles.stroopWord,
+              { color: ronda.colorTexto.hex, transform: [{ scale: wordScaleAnim }] },
+            ]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.5}
+            accessibilityLabel={`La palabra ${ronda.palabra} escrita en color ${ronda.colorTexto.nombre}`}
+          >
+            {ronda.palabra}
+          </Animated.Text>
+        </View>
+
+        {/* Botones de color */}
+        <View style={styles.optionsContainer}>
+          {ronda.opciones.map((color, idx) => {
+            const isDisabled = gameState === 'feedback';
+            return (
+              <TouchableOpacity
+                key={`${rondaIdx}-${color.nombre}-${idx}`}
+                style={[
+                  styles.colorBtn,
+                  { backgroundColor: color.hex },
+                  isDisabled && styles.colorBtnDisabled,
+                ]}
+                onPress={() => handleSelectColor(color)}
+                disabled={isDisabled}
+                accessibilityRole="button"
+                accessibilityLabel={`Color ${color.nombre}`}
+              >
+                <Text style={styles.colorBtnText}>{color.nombre}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </ScrollView>
 
       {/* Feedback flotante */}
       {gameState === 'feedback' && feedbackCorrecto !== null && (
@@ -807,29 +842,6 @@ export default function StroopGameScreen({ navigation, route }) {
           </Text>
         </Animated.View>
       )}
-
-      {/* Botones de color */}
-      <View style={styles.optionsContainer}>
-        {ronda.opciones.map((color, idx) => {
-          const isDisabled = gameState === 'feedback';
-          return (
-            <TouchableOpacity
-              key={`${rondaIdx}-${color.nombre}-${idx}`}
-              style={[
-                styles.colorBtn,
-                { backgroundColor: color.hex },
-                isDisabled && styles.colorBtnDisabled,
-              ]}
-              onPress={() => handleSelectColor(color)}
-              disabled={isDisabled}
-              accessibilityRole="button"
-              accessibilityLabel={`Color ${color.nombre}`}
-            >
-              <Text style={styles.colorBtnText}>{color.nombre}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
     </View>
   );
 }
@@ -869,6 +881,11 @@ const styles = StyleSheet.create({
   gameContainer: {
     flex: 1,
     backgroundColor: '#263238',
+  },
+  gameScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
+    paddingBottom: 8,
   },
 
   // --- Top bar ---
@@ -954,7 +971,6 @@ const styles = StyleSheet.create({
 
   // --- Palabra Stroop ---
   wordContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     minHeight: 120,

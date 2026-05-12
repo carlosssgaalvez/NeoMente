@@ -1,5 +1,6 @@
 import React, { useState, useContext, useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Keyboard, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../constants/colors';
 import { useFonts } from '../hooks/useFonts';
 import Input from '../components/Input';
@@ -17,6 +18,7 @@ export default function LoginScreen({ navigation }) {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const f = useFonts();
   const styles = useMemo(() => getStyles(f), [f]);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -77,7 +79,7 @@ export default function LoginScreen({ navigation }) {
     <ScrollView 
       ref={scrollRef}
       style={styles.container}
-      contentContainerStyle={styles.contentContainer}
+      contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom }]}
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.content}>

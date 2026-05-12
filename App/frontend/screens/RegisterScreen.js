@@ -1,5 +1,6 @@
 import React, { useState, useContext, useMemo, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Keyboard, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../constants/colors';
 import { useFonts } from '../hooks/useFonts';
 import Input from '../components/Input';
@@ -42,6 +43,7 @@ export default function RegisterScreen({ navigation }) {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const f = useFonts();
   const styles = useMemo(() => getStyles(f), [f]);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -130,7 +132,7 @@ export default function RegisterScreen({ navigation }) {
     <ScrollView
       ref={scrollRef}
       style={styles.container}
-      contentContainerStyle={styles.contentContainer}
+      contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom }]}
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.content}>
@@ -287,16 +289,21 @@ const getStyles = (f) => StyleSheet.create({
   },
   footer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
+    alignItems: 'center',
     marginTop: f.s(20),
+    paddingHorizontal: f.s(8),
   },
   footerText: {
     color: colors.text,
     fontSize: f.body,
+    textAlign: 'center',
   },
   link: {
     color: colors.primary,
     fontSize: f.body,
     fontWeight: f.bold,
+    textAlign: 'center',
   },
 });

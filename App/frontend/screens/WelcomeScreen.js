@@ -1,5 +1,6 @@
 import React, { useContext, useMemo } from 'react';
-import { View, Image, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Image, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../constants/colors';
 import { useFonts } from '../hooks/useFonts';
 import Card from '../components/Card';
@@ -16,6 +17,7 @@ export default function WelcomeScreen({ navigation }) {
   const { loginAsGuest, isLoading, isAuthenticated, user, isGuest, logout } = useContext(AuthContext);
   const f = useFonts();
   const styles = useMemo(() => getStyles(f), [f]);
+  const insets = useSafeAreaInsets();
 
   // Solo usuarios registrados (no invitados) ven la versión personalizada
   const isRegistered = isAuthenticated && !isGuest;
@@ -47,7 +49,12 @@ export default function WelcomeScreen({ navigation }) {
         <View style={styles.circle5} />
       </View>
 
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.content, { paddingBottom: f.s(40) + insets.bottom }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Card>
           <Image
             source={require('../assets/images/NeomenteLogo.png')}
@@ -146,7 +153,7 @@ export default function WelcomeScreen({ navigation }) {
             </TouchableOpacity>
           )}
         </Card>
-      </View>
+      </ScrollView>
 
       {/* Decoración inferior — oculta para lectores de pantalla */}
       <View style={styles.bottomDecoration} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
@@ -201,8 +208,11 @@ const getStyles = (f) => StyleSheet.create({
     width: 90, height: 90, borderRadius: 45,
     backgroundColor: 'rgba(255,255,255,0.04)',
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  content: {
+    flexGrow: 1,
     justifyContent: 'center',
     paddingVertical: f.s(40),
   },

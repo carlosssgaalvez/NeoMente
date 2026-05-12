@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getProximoNivel, guardarResultado } from '../../services/dataService';
 
 // --- Banco de grupos de palabras ---
@@ -313,6 +314,7 @@ function getNivelLabel(nivel) {
 // --- Pantalla principal del juego ---
 export default function ShepherdGameScreen({ navigation, route }) {
   const juegoId = route.params?.juegoId;
+  const insets = useSafeAreaInsets();
 
   // Estado del juego
   const [nivel, setNivel] = useState(null);
@@ -795,7 +797,7 @@ export default function ShepherdGameScreen({ navigation, route }) {
   if (!ronda) return null;
 
   return (
-    <View style={styles.gameContainer}>
+    <View style={[styles.gameContainer, { paddingBottom: insets.bottom }]}>
       {/* Modal de pausa */}
       <Modal
         visible={gameState === 'paused'}
@@ -850,7 +852,7 @@ export default function ShepherdGameScreen({ navigation, route }) {
         >
           <Text style={styles.topBarBack}>← Salir</Text>
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>🐑 La Oveja Perdida</Text>
+        <Text style={styles.topBarTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{'🐑 La Oveja Perdida'}</Text>
         <TouchableOpacity
           onPress={handlePause}
           accessibilityRole="button"
@@ -1092,9 +1094,12 @@ const styles = StyleSheet.create({
     fontWeight: fonts.semibold,
   },
   topBarTitle: {
+    flex: 1,
     color: colors.white,
     fontSize: fonts.body,
     fontWeight: fonts.bold,
+    textAlign: 'center',
+    marginHorizontal: 8,
   },
   topBarPause: { fontSize: 22 },
 

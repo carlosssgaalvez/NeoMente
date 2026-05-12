@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getProximoNivel, guardarResultado } from '../../services/dataService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -180,6 +181,7 @@ function crearMariposa(coloresActivos, objetivoId, velocidad, area) {
 // ============================================================
 export default function ButterflyGameScreen({ navigation, route }) {
   const juegoId = route.params?.juegoId;
+  const insets = useSafeAreaInsets();
 
   // Estado del juego
   const [nivel, setNivel] = useState(null);
@@ -761,7 +763,7 @@ export default function ButterflyGameScreen({ navigation, route }) {
   // RENDER: Playing (+ Paused modal)
   // ==============================
   return (
-    <View style={styles.gameContainer}>
+    <View style={[styles.gameContainer, { paddingBottom: insets.bottom }]}>
       {/* Modal de pausa */}
       <Modal
         visible={gameState === 'paused'}
@@ -1217,6 +1219,7 @@ const styles = StyleSheet.create({
   resultRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     width: '100%',
     paddingVertical: 8,
     borderBottomWidth: 1,
@@ -1225,11 +1228,15 @@ const styles = StyleSheet.create({
   resultLabel: {
     fontSize: fonts.body,
     color: '#558B2F',
+    flex: 1,
+    flexShrink: 1,
+    marginRight: 8,
   },
   resultValue: {
     fontSize: fonts.body,
     fontWeight: fonts.bold,
     color: '#1B5E20',
+    flexShrink: 0,
   },
   resultBadge: {
     marginTop: 16,

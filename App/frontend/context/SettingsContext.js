@@ -11,8 +11,6 @@ const FONT_SCALES = {
   muy_grande: 1.4,
 };
 
-const MAX_COMBINED_SCALE = 1.6;
-
 const DEFAULT_SETTINGS = {
   fontScale: 'normal',
   reminderEnabled: false,
@@ -23,8 +21,8 @@ const DEFAULT_SETTINGS = {
 /**
  * Proveedor de ajustes de la aplicación.
  * Persiste las preferencias del usuario en SecureStore.
- * Expone las fuentes escaladas (combinando escala de app + sistema) y
- * una función de escalado dimensional para UI responsiva.
+ * La escala de fuente del sistema operativo se ignora por completo;
+ * el tamaño de texto se controla únicamente desde los ajustes de NeoMente.
  */
 export function SettingsProvider({ children }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -48,19 +46,24 @@ export function SettingsProvider({ children }) {
   }, []);
 
   const appScale = FONT_SCALES[settings.fontScale] || 1;
+
+  // Contrarresta la escala del SO: si el sistema aplica ×1.3 y nosotros
+  // dividimos por 1.3, el resultado final es el tamaño que queremos.
+  // Combinado con allowFontScaling=false esto garantiza inmunidad total.
   const systemScale = getSystemFontScale();
-  const combinedScale = Math.min(appScale * systemScale, MAX_COMBINED_SCALE);
+  const correction = 1 / systemScale;
+  const effectiveScale = appScale * correction;
 
   const scaledFonts = useMemo(() => ({
-    h1: Math.round(baseFonts.h1 * combinedScale),
-    h2: Math.round(baseFonts.h2 * combinedScale),
-    body: Math.round(baseFonts.body * combinedScale),
-    small: Math.round(baseFonts.small * combinedScale),
+    h1: Math.round(baseFonts.h1 * effectiveScale),
+    h2: Math.round(baseFonts.h2 * effectiveScale),
+    body: Math.round(baseFonts.body * effectiveScale),
+    small: Math.round(baseFonts.small * effectiveScale),
     bold: baseFonts.bold,
     semibold: baseFonts.semibold,
     normal: baseFonts.normal,
     s: dimensionScale,
-  }), [combinedScale]);
+  }), [effectiveScale]);
 
   const value = useMemo(() => ({
     settings,

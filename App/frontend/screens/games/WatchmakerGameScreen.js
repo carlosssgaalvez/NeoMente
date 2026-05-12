@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getProximoNivel, guardarResultado } from '../../services/dataService';
 
 // --- Banco de palabras ---
@@ -296,6 +297,7 @@ function getNivelLabel(nivel) {
 // --- Pantalla principal del juego ---
 export default function WatchmakerGameScreen({ navigation, route }) {
   const juegoId = route.params?.juegoId;
+  const insets = useSafeAreaInsets();
 
   // Estado del juego
   const [nivel, setNivel] = useState(null);
@@ -805,7 +807,7 @@ export default function WatchmakerGameScreen({ navigation, route }) {
   const palabraCompleta = seleccionUsuario.length === ronda.palabra.length;
 
   return (
-    <View style={styles.gameContainer}>
+    <View style={[styles.gameContainer, { paddingBottom: insets.bottom }]}>
       {/* Modal de pausa */}
       <Modal
         visible={gameState === 'paused'}
@@ -860,7 +862,7 @@ export default function WatchmakerGameScreen({ navigation, route }) {
         >
           <Text style={styles.topBarBack}>← Salir</Text>
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>🕰️ El Reloj de Letras</Text>
+        <Text style={styles.topBarTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{'🕰️ El Reloj de Letras'}</Text>
         <TouchableOpacity
           onPress={handlePause}
           accessibilityRole="button"
@@ -970,27 +972,7 @@ export default function WatchmakerGameScreen({ navigation, route }) {
             })}
           </View>
 
-          {/* Botones de acción rápida */}
-          {gameState === 'playing' && seleccionUsuario.length > 0 && (
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                style={styles.actionBtn}
-                onPress={handleRemoveLastLetra}
-                accessibilityRole="button"
-                accessibilityLabel="Borrar última letra"
-              >
-                <Text style={styles.actionBtnText}>⌫ Borrar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.actionBtnClear]}
-                onPress={handleClearSeleccion}
-                accessibilityRole="button"
-                accessibilityLabel="Borrar todo"
-              >
-                <Text style={[styles.actionBtnText, styles.actionBtnClearText]}>🗑 Limpiar</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {/* Botones de acción rápida — se muestran vacíos de forma invisible para mantener el espacio */}
         </View>
 
         {/* Letras disponibles */}
@@ -1019,6 +1001,28 @@ export default function WatchmakerGameScreen({ navigation, route }) {
             ))}
           </View>
         </View>
+
+        {/* Botones de acción rápida — debajo de las letras disponibles */}
+        {gameState === 'playing' && seleccionUsuario.length > 0 && (
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={handleRemoveLastLetra}
+              accessibilityRole="button"
+              accessibilityLabel="Borrar última letra"
+            >
+              <Text style={styles.actionBtnText}>⌫ Borrar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.actionBtnClear]}
+              onPress={handleClearSeleccion}
+              accessibilityRole="button"
+              accessibilityLabel="Borrar todo"
+            >
+              <Text style={[styles.actionBtnText, styles.actionBtnClearText]}>🗑 Limpiar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Feedback */}
         {gameState === 'feedback' && (
@@ -1145,9 +1149,12 @@ const styles = StyleSheet.create({
     fontWeight: fonts.semibold,
   },
   topBarTitle: {
+    flex: 1,
     color: colors.white,
     fontSize: fonts.body,
     fontWeight: fonts.bold,
+    textAlign: 'center',
+    marginHorizontal: 8,
   },
   topBarPause: { fontSize: 22 },
 
@@ -1317,8 +1324,11 @@ const styles = StyleSheet.create({
   // --- Action buttons ---
   actionRow: {
     flexDirection: 'row',
+    justifyContent: 'center',
     gap: 12,
     marginTop: 12,
+    marginBottom: 8,
+    paddingHorizontal: 16,
   },
   actionBtn: {
     paddingVertical: 8,
