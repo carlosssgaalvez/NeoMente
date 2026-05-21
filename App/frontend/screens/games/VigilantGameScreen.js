@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getProximoNivel, guardarResultado } from '../../services/dataService';
 
 // --- Símbolos del juego (30 distintos) ---
@@ -160,6 +161,7 @@ function getNivelLabel(nivel) {
 // --- Pantalla principal del juego ---
 export default function VigilantGameScreen({ navigation, route }) {
   const juegoId = route.params?.juegoId;
+  const insets = useSafeAreaInsets();
 
   // Estado del juego
   const [nivel, setNivel] = useState(null);
@@ -682,7 +684,7 @@ export default function VigilantGameScreen({ navigation, route }) {
   const estimuloActual = secuencia[estimuloIdx];
 
   return (
-    <View style={styles.gameContainer}>
+    <View style={[styles.gameContainer, { paddingBottom: insets.bottom }]}>
       {/* Modal de pausa */}
       <Modal
         visible={gameState === 'paused'}

@@ -1,0 +1,11 @@
+node_modules
+.expo
+dist
+.git
+web-build
+__tests__
+tests
+*.test.js
+jest.config.js
+.env
+.env.*

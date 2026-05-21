@@ -17,6 +17,9 @@ frontend/dist/
 frontend/expo-env.d.ts
 frontend/build/
 
+# --- DOCUMENTACIÓN ---
+docs/
+
 # --- SISTEMA ---
 .DS_Store
 *.log

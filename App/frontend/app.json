@@ -36,7 +36,10 @@
       "expo-sqlite"
     ],
     "extra": {
-      "apiUrl": "https://neomente-backend.onrender.com"
+      "apiUrl": "https://neomente-backend.onrender.com",
+      "eas": {
+        "projectId": "53f8c052-f03b-42a2-8419-72b4fd4cae2f"
+      }
     }
   }
 }

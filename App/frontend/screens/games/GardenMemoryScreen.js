@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getProximoNivel, guardarResultado } from '../../services/dataService';
 
 // --- Catálogo de plantas (emoji + nombre) ---
@@ -216,6 +217,7 @@ const Maceta = React.memo(function Maceta({ carta, isFlipped, isMatched, shouldS
 // --- Pantalla principal del juego ---
 export default function GardenMemoryScreen({ navigation, route }) {
   const juegoId = route.params?.juegoId;
+  const insets = useSafeAreaInsets();
 
   const [nivel, setNivel] = useState(null);
   const [config, setConfig] = useState(null);
@@ -626,7 +628,7 @@ export default function GardenMemoryScreen({ navigation, route }) {
   // RENDER: Tablero de juego
   // ==============================
   return (
-    <View style={styles.gameContainer}>
+    <View style={[styles.gameContainer, { paddingBottom: insets.bottom }]}>
       {/* Modal de pausa */}
       <Modal
         visible={gameState === 'paused'}
