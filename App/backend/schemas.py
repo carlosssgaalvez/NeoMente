@@ -9,17 +9,17 @@ class UsuarioBase(BaseModel):
 
 class UsuarioCreate(BaseModel):
     nombre: Optional[str] = Field(None, max_length=100)
-    usuario: Optional[str] = Field(None, max_length=50)
+    usuario: Optional[str] = Field(None, min_length=3, max_length=50)
     password: Optional[str] = Field(None, max_length=128)
     es_invitado: bool = False
 
 class UsuarioLoginRequest(BaseModel):
-    usuario: str = Field(..., max_length=50)
+    usuario: str = Field(..., min_length=3, max_length=50)
     password: str = Field(..., max_length=128)
 
 class UsuarioConvertir(BaseModel):
     nombre: str = Field(..., max_length=100)
-    usuario: str = Field(..., max_length=50)
+    usuario: str = Field(..., min_length=3, max_length=50)
     password: str = Field(..., max_length=128)
 
 class UsuarioUpdatePerfil(BaseModel):
@@ -64,9 +64,9 @@ class JuegoResponse(JuegoBase):
 
 # --- RESULTADO ---
 class ResultadoBase(BaseModel):
-    puntuacion: float
-    duracion_segundos: int
-    nivel_dificultad: int
+    puntuacion: float = Field(..., ge=0, le=100)
+    duracion_segundos: int = Field(..., ge=0)
+    nivel_dificultad: int = Field(..., ge=0, le=100)
 
 class ResultadoCreate(ResultadoBase):
     juego_id: int

@@ -141,31 +141,37 @@ const Maceta = React.memo(function Maceta({ carta, isFlipped, isMatched, shouldS
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.spring(flipAnim, {
+    const anim = Animated.spring(flipAnim, {
       toValue: isFlipped || isMatched ? 1 : 0,
       friction: 8,
       tension: 60,
       useNativeDriver: true,
-    }).start();
+    });
+    anim.start();
+    return () => anim.stop();
   }, [isFlipped, isMatched, flipAnim]);
 
   useEffect(() => {
     if (isMatched) {
-      Animated.sequence([
+      const anim = Animated.sequence([
         Animated.timing(matchAnim, { toValue: 1.15, duration: 200, useNativeDriver: true }),
         Animated.timing(matchAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-      ]).start();
+      ]);
+      anim.start();
+      return () => anim.stop();
     }
   }, [isMatched, matchAnim]);
 
   useEffect(() => {
     if (shouldShake) {
-      Animated.sequence([
+      const anim = Animated.sequence([
         Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: 6, duration: 50, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
-      ]).start();
+      ]);
+      anim.start();
+      return () => anim.stop();
     }
   }, [shouldShake, shakeAnim]);
 
@@ -428,7 +434,10 @@ export default function GardenMemoryScreen({ navigation, route }) {
   }, [gameState]);
 
   const handleResume = useCallback(() => {
-    if (gameState === 'paused') setGameState('playing');
+    if (gameState === 'paused') {
+      lockRef.current = false;
+      setGameState('playing');
+    }
   }, [gameState]);
 
   // --- Replay ---

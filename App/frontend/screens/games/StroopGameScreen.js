@@ -295,12 +295,14 @@ export default function StroopGameScreen({ navigation, route }) {
   useEffect(() => {
     if (gameState === 'playing') {
       wordScaleAnim.setValue(0.5);
-      Animated.spring(wordScaleAnim, {
+      const anim = Animated.spring(wordScaleAnim, {
         toValue: 1,
         friction: 5,
         tension: 100,
         useNativeDriver: true,
-      }).start();
+      });
+      anim.start();
+      return () => anim.stop();
     }
   }, [gameState, rondaIdx, wordScaleAnim]);
 

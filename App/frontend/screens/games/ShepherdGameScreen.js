@@ -423,12 +423,14 @@ export default function ShepherdGameScreen({ navigation, route }) {
   useEffect(() => {
     if (gameState === 'playing') {
       cardAnim.setValue(0.5);
-      Animated.spring(cardAnim, {
+      const anim = Animated.spring(cardAnim, {
         toValue: 1,
         friction: 5,
         tension: 100,
         useNativeDriver: true,
-      }).start();
+      });
+      anim.start();
+      return () => anim.stop();
     }
   }, [gameState, rondaIdx, cardAnim]);
 

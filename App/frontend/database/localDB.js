@@ -57,15 +57,15 @@ async function createTables(database) {
   const count = await database.getFirstAsync('SELECT COUNT(*) as c FROM juegos');
   if (!count || count.c === 0) {
     const seed = [
-      [1, 'Jardín de la Memoria', 'Memoria', 'Memoriza y reproduce secuencias de flores en el jardín.'],
-      [2, 'El Mercado', 'Memoria', 'Recuerda la lista de la compra y selecciona los productos correctos.'],
-      [3, 'La Receta de la Abuela', 'Memoria', 'Memoriza los ingredientes y pasos de una receta.'],
-      [4, 'El Semáforo', 'Atención', 'Responde rápidamente al color correcto del semáforo.'],
-      [5, 'Cazamariposas', 'Atención', 'Atrapa las mariposas del color indicado.'],
-      [6, 'El Vigilante', 'Atención', 'Detecta los cambios en la escena observada.'],
-      [7, 'Refranes Perdidos', 'Lenguaje', 'Completa los refranes con la palabra correcta.'],
-      [8, 'La Oveja Perdida', 'Lenguaje', 'Encuentra la palabra que no pertenece al grupo.'],
-      [9, 'El Reloj de Letras', 'Lenguaje', 'Forma palabras con las letras disponibles antes de que se agote el tiempo.'],
+      [1, 'La Receta de la Abuela', 'Memoria', 'Memoriza los pasos de la receta en orden y demuestra que eres un gran cocinero.'],
+      [2, 'Jardín de la Memoria', 'Memoria', 'Descubre las parejas de plantas ocultas en macetas y haz florecer tu jardín mental.'],
+      [3, 'El Mercado', 'Memoria', 'Memoriza los precios de los productos del mercado y recuérdalos para completar tu compra.'],
+      [4, 'El Semáforo', 'Atención', 'Identifica el color de las letras y no te dejes engañar por la palabra. ¡Pon a prueba tu atención!'],
+      [5, 'Cazamariposas', 'Atención', 'Atrapa las mariposas del color indicado y pon a prueba tu atención selectiva.'],
+      [6, 'El Vigilante', 'Atención', 'Mantén la concentración y pulsa solo cuando aparezca el símbolo objetivo. ¡No dejes pasar ninguno!'],
+      [7, 'Refranes Perdidos', 'Lenguaje', 'Completa refranes populares y pon a prueba tu sabiduría cultural.'],
+      [8, 'La Oveja Perdida', 'Lenguaje', 'Encuentra la oveja descarriada: la palabra que no pertenece al grupo.'],
+      [9, 'El Reloj de Letras', 'Lenguaje', 'Reordena las letras desordenadas y repara las palabras del relojero.'],
     ];
     for (const [id, nombre, area, desc] of seed) {
       await database.runAsync(

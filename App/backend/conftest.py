@@ -1,6 +1,7 @@
 import os
 os.environ["SECRET_KEY"] = "test-secret-key-for-pytest"
 os.environ["DATABASE_URL"] = "sqlite:///./test_neomente.db"
+os.environ["RATE_LIMIT_LOGIN"] = "1000/minute"
 
 import pytest
 from sqlalchemy import create_engine

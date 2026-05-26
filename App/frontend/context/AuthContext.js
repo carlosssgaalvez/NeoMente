@@ -197,7 +197,7 @@ export function AuthProvider({ children }) {
         throw new Error('Necesitas conexión a internet para crear tu cuenta');
       }
 
-      await authAPI.registro(nombre, usuario, password);
+      await authAPI.convertirInvitado(nombre, usuario, password);
       const tokenData = await authAPI.login(usuario, password);
       await saveTokens(tokenData.access_token, tokenData.refresh_token);
       await clearGuestData();

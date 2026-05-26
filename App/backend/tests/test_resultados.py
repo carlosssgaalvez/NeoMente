@@ -24,19 +24,17 @@ class TestGuardarResultado:
         }, headers=guest_user["headers"])
         assert resp.status_code == 200
 
-    def test_nivel_dificultad_clamped(self, client, registered_user, seeded_games):
+    def test_nivel_dificultad_fuera_de_rango_rechazado(self, client, registered_user, seeded_games):
         resp = client.post("/resultados/", json={
             "juego_id": 1, "puntuacion": 50.0, "duracion_segundos": 60, "nivel_dificultad": 150,
         }, headers=registered_user["headers"])
-        assert resp.status_code == 200
-        assert resp.json()["nivel_dificultad"] == 100
+        assert resp.status_code == 422
 
-    def test_nivel_negativo_clamped_a_cero(self, client, registered_user, seeded_games):
+    def test_nivel_negativo_rechazado(self, client, registered_user, seeded_games):
         resp = client.post("/resultados/", json={
             "juego_id": 1, "puntuacion": 50.0, "duracion_segundos": 60, "nivel_dificultad": -10,
         }, headers=registered_user["headers"])
-        assert resp.status_code == 200
-        assert resp.json()["nivel_dificultad"] == 0
+        assert resp.status_code == 422
 
 
 class TestProximoNivel:
@@ -115,9 +113,10 @@ class TestResultadosPorJuego:
 
 
 class TestEstadisticas:
-    def test_sin_resultados_404(self, client, registered_user, seeded_games):
+    def test_sin_resultados_devuelve_lista_vacia(self, client, registered_user, seeded_games):
         resp = client.get("/resultados/estadisticas", headers=registered_user["headers"])
-        assert resp.status_code == 404
+        assert resp.status_code == 200
+        assert resp.json() == []
 
     def test_estadisticas_agrupadas_por_juego(self, client, registered_user, seeded_games):
         for jid in [1, 1, 4]:
@@ -141,7 +140,8 @@ class TestBorrarEstadisticas:
         assert resp.status_code == 200
         assert "1 resultados eliminados" in resp.json()["mensaje"]
         stats = client.get("/resultados/estadisticas", headers=registered_user["headers"])
-        assert stats.status_code == 404
+        assert stats.status_code == 200
+        assert stats.json() == []
 
     def test_borrar_sin_resultados(self, client, registered_user, seeded_games):
         resp = client.delete("/resultados/estadisticas", headers=registered_user["headers"])

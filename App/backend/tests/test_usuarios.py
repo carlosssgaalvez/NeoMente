@@ -21,34 +21,34 @@ class TestRegistro:
 
     def test_registro_sin_password(self, client):
         resp = client.post("/usuarios/registro", json={
-            "nombre": "B", "usuario": "b1", "es_invitado": False,
+            "nombre": "B", "usuario": "buser1", "es_invitado": False,
         })
         assert resp.status_code == 400
 
     def test_registro_password_debil_sin_mayuscula(self, client):
         resp = client.post("/usuarios/registro", json={
-            "nombre": "C", "usuario": "c1", "password": "nouppcase1", "es_invitado": False,
+            "nombre": "C", "usuario": "cuser1", "password": "nouppcase1", "es_invitado": False,
         })
         assert resp.status_code == 400
         assert "mayúscula" in resp.json()["detail"]
 
     def test_registro_password_debil_sin_numero(self, client):
         resp = client.post("/usuarios/registro", json={
-            "nombre": "D", "usuario": "d1", "password": "NoNumber!", "es_invitado": False,
+            "nombre": "D", "usuario": "duser1", "password": "NoNumber!", "es_invitado": False,
         })
         assert resp.status_code == 400
         assert "número" in resp.json()["detail"]
 
     def test_registro_password_corta(self, client):
         resp = client.post("/usuarios/registro", json={
-            "nombre": "E", "usuario": "e1", "password": "Sh1", "es_invitado": False,
+            "nombre": "E", "usuario": "euser1", "password": "Sh1", "es_invitado": False,
         })
         assert resp.status_code == 400
         assert "8 caracteres" in resp.json()["detail"]
 
     def test_registro_como_invitado_rechazado(self, client):
         resp = client.post("/usuarios/registro", json={
-            "nombre": "F", "usuario": "f1", "password": "FPass123", "es_invitado": True,
+            "nombre": "F", "usuario": "fuser1", "password": "FPass123", "es_invitado": True,
         })
         assert resp.status_code == 400
 

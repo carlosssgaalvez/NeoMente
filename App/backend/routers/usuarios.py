@@ -1,11 +1,17 @@
 import re
-from fastapi import APIRouter, Depends, HTTPException, status
+import os
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from typing import List
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 import crud, schemas, database, auth
 from auth import obtener_usuario_actual
 from crud.usuarios import hash_password, verify_password
 from models import Usuario
+
+limiter = Limiter(key_func=get_remote_address)
+RATE_LIMIT_LOGIN = os.getenv("RATE_LIMIT_LOGIN", "5/minute")
 
 router = APIRouter(
     prefix="/usuarios",
@@ -79,7 +85,8 @@ def registrar_usuario(usuario_data: schemas.UsuarioCreate, db: Session = Depends
 
 # 3. Login - Obtener token de acceso y refresh token
 @router.post("/login", response_model=schemas.TokenResponse)
-def login(credenciales: schemas.UsuarioLoginRequest, db: Session = Depends(database.get_db)):
+@limiter.limit(RATE_LIMIT_LOGIN)
+def login(request: Request, credenciales: schemas.UsuarioLoginRequest, db: Session = Depends(database.get_db)):
     """Autentica un usuario y devuelve un token JWT."""
     
     # Mensaje genérico para no revelar si el usuario existe

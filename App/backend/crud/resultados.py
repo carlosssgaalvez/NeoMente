@@ -12,6 +12,9 @@ UMBRAL_BAJO = 40     # Por debajo se baja dificultad
 
 
 def guardar_resultado(db: Session, usuario_id: int, juego_id: int, puntuacion: float, segundos: int, nivel: int):
+    juego = db.query(Juego).filter(Juego.id == juego_id).first()
+    if not juego:
+        raise ValueError("Juego no encontrado")
     nivel_clamped = max(MIN_DIFICULTAD, min(MAX_DIFICULTAD, nivel))
     nuevo_resultado = ResultadoEjercicio(
         usuario_id=usuario_id,

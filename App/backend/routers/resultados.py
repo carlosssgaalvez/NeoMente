@@ -17,14 +17,17 @@ def guardar_puntuacion(
     db: Session = Depends(database.get_db)
 ):
     """Guarda resultado — el usuario_id se extrae del token, no del body."""
-    return crud.guardar_resultado(
-        db, 
-        usuario_id=usuario_actual.id,
-        juego_id=resultado.juego_id,
-        puntuacion=resultado.puntuacion,
-        segundos=resultado.duracion_segundos,
-        nivel=resultado.nivel_dificultad
-    )
+    try:
+        return crud.guardar_resultado(
+            db, 
+            usuario_id=usuario_actual.id,
+            juego_id=resultado.juego_id,
+            puntuacion=resultado.puntuacion,
+            segundos=resultado.duracion_segundos,
+            nivel=resultado.nivel_dificultad
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 # Endpoint para obtener el nivel recomendado (protegido)
 @router.get("/proximo-nivel/{juego_id}")
@@ -63,8 +66,6 @@ def obtener_estadisticas_usuario(
 ):
     """Obtiene estadísticas del usuario autenticado en todos los juegos."""
     estadisticas = crud.obtener_estadisticas_usuario_por_juego(db, usuario_actual.id)
-    if not estadisticas:
-        raise HTTPException(status_code=404, detail="No hay resultados para este usuario")
     return estadisticas
 
 # Endpoint para borrar todas las estadísticas del usuario (protegido)

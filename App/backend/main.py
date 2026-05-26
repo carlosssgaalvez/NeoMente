@@ -3,7 +3,11 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import uvicorn
 
 import database
@@ -12,11 +16,16 @@ from routers import juegos, usuarios, resultados
 
 load_dotenv()
 
+# Configuración del rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
 # Creamos las tablas en la base de datos (si no existen)
 database.Base.metadata.create_all(bind=engine)
 
 # 1. Configuración básica de FastAPI
 app = FastAPI(title="NeoMente API")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Middleware de cabeceras de seguridad HTTP (Accenture Standard)
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

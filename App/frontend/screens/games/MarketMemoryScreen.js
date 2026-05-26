@@ -176,22 +176,26 @@ const ProductoCard = React.memo(function ProductoCard({
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.spring(scaleAnim, {
+    const anim = Animated.spring(scaleAnim, {
       toValue: 1,
       friction: 6,
       tension: 80,
       useNativeDriver: true,
-    }).start();
+    });
+    anim.start();
+    return () => anim.stop();
   }, [scaleAnim]);
 
   useEffect(() => {
     if (isCorrect === false) {
-      Animated.sequence([
+      const anim = Animated.sequence([
         Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: 6, duration: 50, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
-      ]).start();
+      ]);
+      anim.start();
+      return () => anim.stop();
     }
   }, [isCorrect, shakeAnim]);
 
