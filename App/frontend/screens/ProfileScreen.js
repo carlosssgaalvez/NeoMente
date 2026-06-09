@@ -1,8 +1,9 @@
-import React, { useContext, useState, useMemo, useRef, useEffect } from 'react';
+import React, { useContext, useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity,
   Keyboard, Platform,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../constants/colors';
 import { useFonts } from '../hooks/useFonts';
 import Input from '../components/Input';
@@ -95,20 +96,22 @@ export default function ProfileScreen() {
     }
   }, [user]);
 
-  // Cargar estadísticas
-  useEffect(() => {
-    let mounted = true;
-    const cargar = async () => {
-      try {
-        const data = await getEstadisticas();
-        if (mounted) setStats(data);
-      } catch {
-        // Sin estadísticas — no bloquear
-      }
-    };
-    if (user) cargar();
-    return () => { mounted = false; };
-  }, [user]);
+  // Cargar estadísticas (se refresca cada vez que se vuelve a la pantalla)
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+      const cargar = async () => {
+        try {
+          const data = await getEstadisticas();
+          if (mounted) setStats(data);
+        } catch {
+          // Sin estadísticas — no bloquear
+        }
+      };
+      if (user) cargar();
+      return () => { mounted = false; };
+    }, [user])
+  );
 
   // Indicador de robustez (para conversión y cambio de contraseña)
   const convStrength = useMemo(() => getPasswordStrength(convPassword), [convPassword]);
