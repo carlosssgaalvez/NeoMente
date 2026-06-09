@@ -102,14 +102,13 @@ async function syncFromServer() {
     const authenticated = await isAuthenticated();
     if (!online || !authenticated) return;
 
-    const juegosLocales = await getJuegosLocal();
-    if (juegosLocales.length === 0) {
-      try {
-        const remotos = await gameAPI.getJuegos();
+    try {
+      const remotos = await gameAPI.getJuegos();
+      if (remotos && remotos.length > 0) {
         await insertJuegos(remotos);
-      } catch (err) {
-        console.log('[Sync] Error fetching juegos from server:', err.message);
       }
+    } catch (err) {
+      console.log('[Sync] Error fetching juegos from server:', err.message);
     }
 
     const juegos = await getJuegosLocal();

@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
@@ -22,8 +23,46 @@ limiter = Limiter(key_func=get_remote_address)
 # Creamos las tablas en la base de datos (si no existen)
 database.Base.metadata.create_all(bind=engine)
 
+
+def verificar_datos_iniciales():
+    """Verifica que los juegos iniciales existen en la base de datos."""
+    from models import Juego
+    db = SessionLocal()
+    try:
+        juegos_iniciales = {
+            1: ("La Receta de la Abuela",  "Memoria",   "Memoriza los pasos de la receta en orden y demuestra que eres un gran cocinero."),
+            2: ("Jardín de la Memoria",    "Memoria",   "Descubre las parejas de plantas ocultas en macetas y haz florecer tu jardín mental."),
+            3: ("El Mercado",              "Memoria",   "Memoriza los precios de los productos del mercado y recuérdalos para completar tu compra."),
+            4: ("El Semáforo",             "Atención",  "Identifica el color de las letras y no te dejes engañar por la palabra. ¡Pon a prueba tu atención!"),
+            5: ("Cazamariposas",           "Atención",  "Atrapa las mariposas del color indicado y pon a prueba tu atención selectiva."),
+            6: ("El Vigilante",            "Atención",  "Mantén la concentración y pulsa solo cuando aparezca el símbolo objetivo. ¡No dejes pasar ninguno!"),
+            7: ("Refranes Perdidos",       "Lenguaje",  "Completa refranes populares y pon a prueba tu sabiduría cultural."),
+            8: ("La Oveja Perdida", "Lenguaje",  "Encuentra la oveja descarriada: la palabra que no pertenece al grupo."),
+            9: ("El Reloj de Letras", "Lenguaje", "Reordena las letras desordenadas y repara las palabras del relojero."),
+        }
+        for id_juego, (nombre, area, desc) in juegos_iniciales.items():
+            existe = db.query(Juego).filter(Juego.id == id_juego).first()
+            if not existe:
+                db.add(Juego(id=id_juego, nombre=nombre, area_cognitiva=area, descripcion=desc))
+            elif existe.nombre != nombre:
+                existe.nombre = nombre
+                existe.area_cognitiva = area
+                existe.descripcion = desc
+        db.commit()
+        print("Datos iniciales verificados.")
+    finally:
+        db.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Gestiona el ciclo de vida de la aplicación (arranque y apagado)."""
+    verificar_datos_iniciales()
+    yield
+
+
 # 1. Configuración básica de FastAPI
-app = FastAPI(title="NeoMente API")
+app = FastAPI(title="NeoMente API", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -70,36 +109,6 @@ app.include_router(resultados.router)
 @app.get("/")
 def home():
     return {"message": "NeoMente API Online"}
-
-@app.on_event("startup")
-def startup_event():
-    """Verifica que los juegos iniciales existen en la base de datos."""
-    from models import Juego
-    db = SessionLocal()
-    try:
-        juegos_iniciales = {
-            1: ("La Receta de la Abuela",  "Memoria",   "Memoriza los pasos de la receta en orden y demuestra que eres un gran cocinero."),
-            2: ("Jardín de la Memoria",    "Memoria",   "Descubre las parejas de plantas ocultas en macetas y haz florecer tu jardín mental."),
-            3: ("El Mercado",              "Memoria",   "Memoriza los precios de los productos del mercado y recuérdalos para completar tu compra."),
-            4: ("El Semáforo",             "Atención",  "Identifica el color de las letras y no te dejes engañar por la palabra. ¡Pon a prueba tu atención!"),
-            5: ("Cazamariposas",           "Atención",  "Atrapa las mariposas del color indicado y pon a prueba tu atención selectiva."),
-            6: ("El Vigilante",            "Atención",  "Mantén la concentración y pulsa solo cuando aparezca el símbolo objetivo. ¡No dejes pasar ninguno!"),
-            7: ("Refranes Perdidos",       "Lenguaje",  "Completa refranes populares y pon a prueba tu sabiduría cultural."),
-            8: ("La Oveja Perdida", "Lenguaje",  "Encuentra la oveja descarriada: la palabra que no pertenece al grupo."),
-            9: ("El Reloj de Letras", "Lenguaje", "Reordena las letras desordenadas y repara las palabras del relojero."),
-        }
-        for id_juego, (nombre, area, desc) in juegos_iniciales.items():
-            existe = db.query(Juego).filter(Juego.id == id_juego).first()
-            if not existe:
-                db.add(Juego(id=id_juego, nombre=nombre, area_cognitiva=area, descripcion=desc))
-            elif existe.nombre != nombre:
-                existe.nombre = nombre
-                existe.area_cognitiva = area
-                existe.descripcion = desc
-        db.commit()
-        print("Datos iniciales verificados.")
-    finally:
-        db.close()
 
 if __name__ == "__main__":
     host = os.getenv("API_HOST", "0.0.0.0")

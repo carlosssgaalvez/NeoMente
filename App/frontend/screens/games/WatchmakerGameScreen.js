@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated,
-  AppState, ScrollView, Modal,
+  AppState, ScrollView, Modal, Alert,
 } from 'react-native';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
@@ -504,7 +504,9 @@ export default function WatchmakerGameScreen({ navigation, route }) {
         puntuacion: score,
         duracion_segundos: tiempoActual,
         nivel_dificultad: nivel,
-      }).catch(() => {});
+      }).catch(() => {
+        Alert.alert('Error', 'No se pudo guardar el resultado.');
+      });
     }
   }, [rondas, juegoId, nivel, resultSaved, clearAllTimers]);
 

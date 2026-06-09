@@ -166,18 +166,19 @@ def convertir_invitado_a_registrado(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-# 5. Eliminar un usuario invitado (protegido — llamado al iniciar sesión con otra cuenta)
+# 5. Eliminar un usuario invitado (protegido — solo puede borrarse a sí mismo)
 @router.delete("/invitado/{guest_id}")
 def eliminar_invitado(
     guest_id: int,
     usuario_actual: Usuario = Depends(obtener_usuario_actual),
     db: Session = Depends(database.get_db)
 ):
-    """Elimina un usuario invitado y sus resultados. Solo borra si el usuario es invitado."""
-    guest = crud.obtener_usuario_por_id(db, guest_id)
-    if not guest or not guest.es_invitado:
-        raise HTTPException(status_code=404, detail="Usuario invitado no encontrado")
-    crud.eliminar_usuario(db, guest_id)
+    """Elimina el perfil invitado autenticado y sus resultados."""
+    if not usuario_actual.es_invitado:
+        raise HTTPException(status_code=403, detail="Solo un perfil invitado puede eliminarse por esta vía")
+    if usuario_actual.id != guest_id:
+        raise HTTPException(status_code=403, detail="No puedes eliminar un invitado que no es el tuyo")
+    crud.eliminar_usuario(db, usuario_actual.id)
     return {"mensaje": "Usuario invitado eliminado"}
 
 # 6. Obtener datos del usuario actual (protegido con token)

@@ -83,8 +83,10 @@ export const cambiarPassword = async (passwordActual, passwordNueva) => {
 };
 
 /**
- * Elimina un usuario invitado por su ID (requiere autenticación).
- * @param {number} guestId - ID del usuario invitado a eliminar.
+ * Elimina el propio perfil invitado autenticado.
+ * El backend solo permite que un invitado se borre a sí mismo, por lo que la
+ * petición debe realizarse con el token del invitado (su id debe coincidir).
+ * @param {number} guestId - ID del invitado autenticado (debe ser el propio).
  * @returns {Promise<Object>} Mensaje de confirmación.
  */
 export const eliminarInvitado = async (guestId) => {

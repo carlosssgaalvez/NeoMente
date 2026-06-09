@@ -4,7 +4,7 @@ import {
 
   View, Text, StyleSheet, TouchableOpacity, Animated,
 
-  AppState, ScrollView, Modal,
+  AppState, ScrollView, Modal, Alert,
 
 } from 'react-native';
 
@@ -940,7 +940,9 @@ export default function ProverbGameScreen({ navigation, route }) {
 
         nivel_dificultad: nivel,
 
-      }).catch(() => {});
+      }).catch(() => {
+        Alert.alert('Error', 'No se pudo guardar el resultado.');
+      });
 
     }
 

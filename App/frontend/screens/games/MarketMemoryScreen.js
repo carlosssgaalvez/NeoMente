@@ -262,9 +262,12 @@ export default function MarketMemoryScreen({ navigation, route }) {
   const appStateRef = useRef(AppState.currentState);
   const wantsToLeaveRef = useRef(false);
   const prevGameStateRef = useRef('loading');
+  const gameStateRef = useRef('loading'); // evita doble toque con estado stale
 
   // Mantener timerValueRef sincronizado
   useEffect(() => { timerValueRef.current = timer; }, [timer]);
+
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
 
   // --- AppState: pausar si el usuario minimiza ---
   useEffect(() => {
@@ -394,7 +397,8 @@ export default function MarketMemoryScreen({ navigation, route }) {
 
   // --- Handler de respuesta ---
   const handleSelectPrecio = useCallback((precioSeleccionado) => {
-    if (gameState !== 'answering') return;
+    if (gameStateRef.current !== 'answering') return;
+    gameStateRef.current = 'feedback';
     const producto = productos[currentProductIdx];
     const correcto = precioSeleccionado === producto.precio;
     const nuevaRespuesta = { productoIdx: currentProductIdx, precioSeleccionado, correcto };
@@ -414,7 +418,7 @@ export default function MarketMemoryScreen({ navigation, route }) {
         setGameState('answering');
       }
     }, correcto ? 800 : 1500); // Más tiempo en error para ver precio correcto
-  }, [gameState, productos, currentProductIdx, respuestas, finalizarPartida]);
+  }, [productos, currentProductIdx, respuestas, finalizarPartida]);
 
   // --- Finalizar partida (usa timerValueRef para evitar stale closure) ---
   const finalizarPartida = useCallback((todasRespuestas) => {
@@ -433,7 +437,9 @@ export default function MarketMemoryScreen({ navigation, route }) {
         puntuacion: score,
         duracion_segundos: tiempoActual,
         nivel_dificultad: nivel,
-      }).catch(() => {});
+      }).catch(() => {
+        Alert.alert('Error', 'No se pudo guardar el resultado.');
+      });
     }
   }, [productos, juegoId, nivel, resultSaved]);
 

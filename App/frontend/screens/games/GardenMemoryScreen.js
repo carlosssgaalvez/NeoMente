@@ -386,7 +386,9 @@ export default function GardenMemoryScreen({ navigation, route }) {
         puntuacion: score,
         duracion_segundos: timer,
         nivel_dificultad: nivel,
-      }).catch(() => {});
+      }).catch(() => {
+        Alert.alert('Error', 'No se pudo guardar el resultado.');
+      });
     }
   }, [paresEncontrados, config, gameState, intentos, timer, nivel, juegoId, resultSaved]);
 

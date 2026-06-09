@@ -111,13 +111,31 @@ class TestInvitado:
         assert resp.status_code == 200
         assert resp.json()["es_invitado"] is True
 
-    def test_eliminar_invitado(self, client, guest_user, registered_user):
+    def test_invitado_puede_eliminarse_a_si_mismo(self, client, guest_user):
+        guest_id = guest_user["usuario_id"]
+        resp = client.delete(
+            f"/usuarios/invitado/{guest_id}",
+            headers=guest_user["headers"],
+        )
+        assert resp.status_code == 200
+
+    def test_registrado_no_puede_eliminar_invitado_ajeno(self, client, guest_user, registered_user):
+        # IDOR: un usuario registrado no debe poder borrar a un invitado ajeno
         guest_id = guest_user["usuario_id"]
         resp = client.delete(
             f"/usuarios/invitado/{guest_id}",
             headers=registered_user["headers"],
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 403
+
+    def test_invitado_no_puede_eliminar_otro_invitado(self, client, guest_user):
+        # IDOR: un invitado no debe poder borrar a otro invitado pasando su id
+        otro = client.post("/usuarios/invitado").json()
+        resp = client.delete(
+            f"/usuarios/invitado/{otro['usuario_id']}",
+            headers=guest_user["headers"],
+        )
+        assert resp.status_code == 403
 
 
 class TestRefreshToken:

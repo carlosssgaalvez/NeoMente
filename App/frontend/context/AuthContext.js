@@ -4,7 +4,7 @@ import {
   saveTokens, saveUser, getAccessToken, getUser, clearAll,
   saveGuestData, getGuestId, getGuestRefreshToken, clearGuestData,
 } from '../utils/storage';
-import { initDatabase, saveUsuarioLocal, getUsuarioLocal, clearAllLocalData } from '../database/localDB';
+import { initDatabase, saveUsuarioLocal, getUsuarioLocal, clearAllLocalData, clearResultadosLocal } from '../database/localDB';
 import { isOnline, fullSync, startAutoSync, stopAutoSync } from '../services/syncService';
 
 export const AuthContext = createContext();
@@ -118,7 +118,7 @@ export function AuthProvider({ children }) {
 
   /**
    * Inicia sesión con usuario y contraseña (requiere internet).
-   * Si existía un invitado local, sus datos se conservan para sincronizar.
+   * Descarta cualquier resultado local no sincronizado (pertenecen al invitado anterior).
    */
   const login = async (usuario, password) => {
     setError(null);
@@ -132,6 +132,7 @@ export function AuthProvider({ children }) {
       await saveTokens(tokenData.access_token, tokenData.refresh_token);
 
       await clearGuestData();
+      await clearResultadosLocal();
 
       const perfil = await authAPI.getPerfil();
       await saveUser(perfil);

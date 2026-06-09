@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated,
-  AppState, ScrollView, Modal, Dimensions,
+  AppState, ScrollView, Modal, Dimensions, Alert,
 } from 'react-native';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
@@ -211,6 +211,7 @@ export default function StroopGameScreen({ navigation, route }) {
   const appStateRef = useRef(AppState.currentState);
   const wantsToLeaveRef = useRef(false);
   const prevGameStateRef = useRef('loading');
+  const gameStateRef = useRef('loading'); // evita doble toque con estado stale
 
   // Animaciones
   const wordScaleAnim = useRef(new Animated.Value(0)).current;
@@ -218,6 +219,8 @@ export default function StroopGameScreen({ navigation, route }) {
 
   // Mantener timerValueRef sincronizado
   useEffect(() => { timerValueRef.current = timer; }, [timer]);
+
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
 
   // --- Limpiar todos los timers ---
   const clearAllTimers = useCallback(() => {
@@ -388,7 +391,9 @@ export default function StroopGameScreen({ navigation, route }) {
         puntuacion: score,
         duracion_segundos: tiempoActual,
         nivel_dificultad: nivel,
-      }).catch(() => {});
+      }).catch(() => {
+        Alert.alert('Error', 'No se pudo guardar el resultado.');
+      });
     }
   }, [rondas, juegoId, nivel, resultSaved, clearAllTimers]);
 
@@ -407,6 +412,8 @@ export default function StroopGameScreen({ navigation, route }) {
 
   // --- Handler de timeout ---
   const handleTimeout = useCallback(() => {
+    if (gameStateRef.current !== 'playing') return;
+    gameStateRef.current = 'feedback';
     if (roundTimerRef.current) { clearInterval(roundTimerRef.current); roundTimerRef.current = null; }
 
     const nuevaRespuesta = { correcto: false, tiempoMs: config?.tiempoPorRonda ?? 0 };
@@ -431,7 +438,8 @@ export default function StroopGameScreen({ navigation, route }) {
 
   // --- Handler de respuesta ---
   const handleSelectColor = useCallback((colorSeleccionado) => {
-    if (gameState !== 'playing') return;
+    if (gameStateRef.current !== 'playing') return;
+    gameStateRef.current = 'feedback';
     if (roundTimerRef.current) { clearInterval(roundTimerRef.current); roundTimerRef.current = null; }
 
     const ronda = rondas[rondaIdx];
@@ -455,7 +463,7 @@ export default function StroopGameScreen({ navigation, route }) {
     feedbackTimeoutRef.current = setTimeout(() => {
       avanzarRonda(nuevasRespuestas);
     }, correcto ? 600 : 1200);
-  }, [gameState, rondas, rondaIdx, respuestas, avanzarRonda, feedbackOpacity]);
+  }, [rondas, rondaIdx, respuestas, avanzarRonda, feedbackOpacity]);
 
   // --- Pausa / Reanudación ---
   const handlePause = useCallback(() => {

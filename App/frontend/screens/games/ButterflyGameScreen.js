@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated,
-  AppState, ScrollView, Modal, Dimensions,
+  AppState, ScrollView, Modal, Dimensions, Alert,
 } from 'react-native';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
@@ -295,7 +295,9 @@ export default function ButterflyGameScreen({ navigation, route }) {
         puntuacion: score,
         duracion_segundos: elapsed,
         nivel_dificultad: nivel,
-      }).catch(() => {});
+      }).catch(() => {
+        Alert.alert('Error', 'No se pudo guardar el resultado.');
+      });
     }
   }, [juegoId, nivel, resultSaved, clearAllTimers, calcularPuntuacion]);
 
