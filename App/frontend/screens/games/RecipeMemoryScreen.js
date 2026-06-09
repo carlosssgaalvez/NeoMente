@@ -449,9 +449,15 @@ export default function RecipeMemoryScreen({ navigation, route }) {
   const appStateRef = useRef(AppState.currentState);
   const wantsToLeaveRef = useRef(false);
   const prevGameStateRef = useRef('loading');
+  const gameStateRef = useRef('loading'); // evita doble toque con estado stale
+  const seleccionesRef = useRef([]);
+  const idsRef = useRef(new Set());
 
   // Mantener timerValueRef sincronizado
   useEffect(() => { timerValueRef.current = timer; }, [timer]);
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+  useEffect(() => { seleccionesRef.current = selecciones; }, [selecciones]);
+  useEffect(() => { idsRef.current = pasosSeleccionadosIds; }, [pasosSeleccionadosIds]);
 
   // --- AppState: pausar si el usuario minimiza ---
   useEffect(() => {
@@ -575,13 +581,15 @@ export default function RecipeMemoryScreen({ navigation, route }) {
 
   // --- Handler selección de paso ---
   const handleSelectPaso = useCallback((paso) => {
-    if (gameState !== 'ordering') return;
-    if (pasosSeleccionadosIds.has(paso.id)) return; // Ya seleccionado
+    if (gameStateRef.current !== 'ordering') return;
+    if (idsRef.current.has(paso.id)) return; // Ya seleccionado
 
-    const nuevasSelecciones = [...selecciones, paso.ordenCorrecto];
-    const nuevosIds = new Set(pasosSeleccionadosIds);
+    const nuevasSelecciones = [...seleccionesRef.current, paso.ordenCorrecto];
+    const nuevosIds = new Set(idsRef.current);
     nuevosIds.add(paso.id);
 
+    seleccionesRef.current = nuevasSelecciones;
+    idsRef.current = nuevosIds;
     setSelecciones(nuevasSelecciones);
     setPasosSeleccionadosIds(nuevosIds);
 
@@ -589,7 +597,7 @@ export default function RecipeMemoryScreen({ navigation, route }) {
     if (nuevasSelecciones.length >= pasosOrdenados.length) {
       finalizarPartida(nuevasSelecciones);
     }
-  }, [gameState, selecciones, pasosSeleccionadosIds, pasosOrdenados, finalizarPartida]);
+  }, [pasosOrdenados, finalizarPartida]);
 
   // --- Deshacer última selección ---
   const handleUndo = useCallback(() => {

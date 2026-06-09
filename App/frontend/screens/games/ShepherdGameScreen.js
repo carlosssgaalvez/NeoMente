@@ -342,12 +342,14 @@ export default function ShepherdGameScreen({ navigation, route }) {
   const appStateRef = useRef(AppState.currentState);
   const wantsToLeaveRef = useRef(false);
   const prevGameStateRef = useRef('loading');
+  const gameStateRef = useRef('loading'); // evita doble toque con estado stale
 
   // Animaciones
   const cardAnim = useRef(new Animated.Value(0)).current;
   const feedbackOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => { timerValueRef.current = timer; }, [timer]);
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
 
   // --- Limpiar todos los timers ---
   const clearAllTimers = useCallback(() => {
@@ -537,6 +539,8 @@ export default function ShepherdGameScreen({ navigation, route }) {
 
   // --- Handler de timeout ---
   const handleTimeout = useCallback(() => {
+    if (gameStateRef.current !== 'playing') return;
+    gameStateRef.current = 'feedback';
     if (roundTimerRef.current) { clearInterval(roundTimerRef.current); roundTimerRef.current = null; }
 
     const nuevaRespuesta = { correcto: false, tiempoMs: config?.tiempoPorRonda ?? 0, seleccion: null };
@@ -558,7 +562,8 @@ export default function ShepherdGameScreen({ navigation, route }) {
 
   // --- Handler de respuesta ---
   const handleSelectWord = useCallback((palabra) => {
-    if (gameState !== 'playing') return;
+    if (gameStateRef.current !== 'playing') return;
+    gameStateRef.current = 'feedback';
     if (roundTimerRef.current) { clearInterval(roundTimerRef.current); roundTimerRef.current = null; }
 
     const ronda = rondas[rondaIdx];
@@ -582,7 +587,7 @@ export default function ShepherdGameScreen({ navigation, route }) {
     feedbackTimeoutRef.current = setTimeout(() => {
       avanzarRonda(nuevasRespuestas);
     }, correcto ? 800 : 2000);
-  }, [gameState, rondas, rondaIdx, respuestas, avanzarRonda, feedbackOpacity]);
+  }, [rondas, rondaIdx, respuestas, avanzarRonda, feedbackOpacity]);
 
   // --- Pausa / Reanudación ---
   const handlePause = useCallback(() => {

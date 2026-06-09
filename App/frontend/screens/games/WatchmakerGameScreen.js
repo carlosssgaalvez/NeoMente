@@ -326,11 +326,15 @@ export default function WatchmakerGameScreen({ navigation, route }) {
   const appStateRef = useRef(AppState.currentState);
   const wantsToLeaveRef = useRef(false);
   const prevGameStateRef = useRef('loading');
+  const gameStateRef = useRef('loading'); // evita doble toque con estado stale
+  const seleccionRef = useRef([]);
 
   // Animaciones
   const cardAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => { timerValueRef.current = timer; }, [timer]);
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+  useEffect(() => { seleccionRef.current = seleccionUsuario; }, [seleccionUsuario]);
 
   // --- Limpiar todos los timers ---
   const clearAllTimers = useCallback(() => {
@@ -525,9 +529,11 @@ export default function WatchmakerGameScreen({ navigation, route }) {
 
   // --- Handler de timeout ---
   const handleTimeout = useCallback(() => {
+    if (gameStateRef.current !== 'playing') return;
+    gameStateRef.current = 'feedback';
     if (roundTimerRef.current) { clearInterval(roundTimerRef.current); roundTimerRef.current = null; }
 
-    const nuevaRespuesta = { correcto: false, tiempoMs: config?.tiempoPorRonda ?? 0, palabraUsuario: seleccionUsuario.map((s) => s.letra).join('') };
+    const nuevaRespuesta = { correcto: false, tiempoMs: config?.tiempoPorRonda ?? 0, palabraUsuario: seleccionRef.current.map((s) => s.letra).join('') };
     const nuevasRespuestas = [...respuestas, nuevaRespuesta];
     setRespuestas(nuevasRespuestas);
     setFeedbackCorrecto(false);
@@ -536,7 +542,7 @@ export default function WatchmakerGameScreen({ navigation, route }) {
     feedbackTimeoutRef.current = setTimeout(() => {
       avanzarRonda(nuevasRespuestas);
     }, 2000);
-  }, [config, respuestas, avanzarRonda, seleccionUsuario]);
+  }, [config, respuestas, avanzarRonda]);
 
   // --- Comprobar palabra cuando el usuario completa las letras ---
   const comprobarPalabra = useCallback((nuevaSeleccion) => {
@@ -561,16 +567,18 @@ export default function WatchmakerGameScreen({ navigation, route }) {
 
   // --- Seleccionar una letra disponible ---
   const handleSelectLetra = useCallback((letraObj) => {
-    if (gameState !== 'playing') return;
+    if (gameStateRef.current !== 'playing') return;
+    if (seleccionRef.current.some((l) => l.id === letraObj.id)) return;
 
-    const nuevaSeleccion = [...seleccionUsuario, letraObj];
+    const nuevaSeleccion = [...seleccionRef.current, letraObj];
+    seleccionRef.current = nuevaSeleccion;
     setSeleccionUsuario(nuevaSeleccion);
     setLetrasDisponibles((prev) =>
       prev.map((l) => (l.id === letraObj.id ? { ...l, usada: true } : l)),
     );
 
     comprobarPalabra(nuevaSeleccion);
-  }, [gameState, seleccionUsuario, comprobarPalabra]);
+  }, [comprobarPalabra]);
 
   // --- Devolver última letra seleccionada ---
   const handleRemoveLastLetra = useCallback(() => {

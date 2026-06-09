@@ -596,6 +596,8 @@ export default function ProverbGameScreen({ navigation, route }) {
 
   const prevGameStateRef = useRef('loading');
 
+  const gameStateRef = useRef('loading'); // evita doble toque con estado stale
+
 
 
   // Animaciones
@@ -609,6 +611,8 @@ export default function ProverbGameScreen({ navigation, route }) {
   // Mantener timerValueRef sincronizado
 
   useEffect(() => { timerValueRef.current = timer; }, [timer]);
+
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
 
 
 
@@ -982,6 +986,10 @@ export default function ProverbGameScreen({ navigation, route }) {
 
   const handleTimeout = useCallback(() => {
 
+    if (gameStateRef.current !== 'playing') return;
+
+    gameStateRef.current = 'feedback';
+
     if (roundTimerRef.current) { clearInterval(roundTimerRef.current); roundTimerRef.current = null; }
 
 
@@ -1024,7 +1032,9 @@ export default function ProverbGameScreen({ navigation, route }) {
 
   const handleSelectOption = useCallback((opcion) => {
 
-    if (gameState !== 'playing') return;
+    if (gameStateRef.current !== 'playing') return;
+
+    gameStateRef.current = 'feedback';
 
     if (roundTimerRef.current) { clearInterval(roundTimerRef.current); roundTimerRef.current = null; }
 
@@ -1072,7 +1082,7 @@ export default function ProverbGameScreen({ navigation, route }) {
 
     }, correcto ? 800 : 2000);
 
-  }, [gameState, rondas, rondaIdx, respuestas, avanzarRonda, feedbackOpacity]);
+  }, [rondas, rondaIdx, respuestas, avanzarRonda, feedbackOpacity]);
 
 
 
